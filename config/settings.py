@@ -12,6 +12,9 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+from dotenv import load_dotenv
+
+load_dotenv()  # .env faylini yuklash
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:8000",
     "http://127.0.0.1:8000",
-    "https://dcf304d1b210.ngrok-free.app",
+    "https://alehson.sifatdev.uz",
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True
@@ -28,9 +31,16 @@ CORS_ALLOW_ALL_ORIGINS = True
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:8000",
     "http://127.0.0.1:8000",
-    "https://dcf304d1b210.ngrok-free.app",
+    "https://alehson.sifatdev.uz",
 ]
-ALLOWED_HOSTS = ["*"]
+
+ALLOWED_HOSTS = [
+    "http://localhost:8000",
+    "https://alehson.sifatdev.uz"
+]
+
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -209,8 +219,8 @@ SOCIALACCOUNT_PROVIDERS = {
             'access_type': 'online',
         },
         'APP': {
-            'client_id': '361063973890-8d4b4k1u2irq4q8cjsn8okg88ih7d98d.apps.googleusercontent.com',
-            'secret': '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', 
+            'client_id': GOOGLE_CLIENT_ID,
+            'secret': GOOGLE_CLIENT_SECRET, 
             'key': ''
         }
     }
