@@ -35,7 +35,9 @@ DEBUG = False
 ALLOWED_HOSTS = [
     "api.alehson.uz",
     "localhost",
-    "127.0.0.1"
+    "127.0.0.1",
+    "www.navksz.uz",
+    "navksz.uz",  
 ]
 
 # CSRF trusted origins yangilash
