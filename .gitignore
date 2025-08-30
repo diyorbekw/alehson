@@ -755,4 +755,11 @@ FodyWeavers.xsd
 ### VisualStudio Patch ###
 # Additional files built by Visual Studio
 
-# End of https://www.toptal.com/developers/gitignore/api/django,git,python,visualstudio,visualstudiocode,openframeworks+visualstudio
+# venv and dotenv
+.env
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
