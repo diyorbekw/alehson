@@ -29,7 +29,7 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_ALL_ORIGINS = True
 
 # Debug ni o'chirish
-DEBUG = False
+DEBUG = True
 
 # Allowed hosts yangilash
 ALLOWED_HOSTS = [
