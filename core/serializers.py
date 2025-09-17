@@ -1,19 +1,23 @@
 from rest_framework import serializers
-from .models import About, Blog, Category, Subcategory, Application, ApplicationImage
+from .models import About, Blog, Category, Subcategory, Application, ApplicationImage, Profile
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 
 
 class AboutSerializer(serializers.ModelSerializer):
-    main_image = serializers.ImageField(required=False) 
-    
+    main_image = serializers.ImageField(required=False)
+    main_image_url = serializers.URLField(read_only=True)
+
     class Meta:
         model = About
-        fields = '__all__'
+        fields = "__all__"
+
 
 class BlogSerializer(serializers.ModelSerializer):
     views = serializers.SerializerMethodField()
+    image = serializers.ImageField(required=False)
+    image_url = serializers.URLField(read_only=True)
 
     class Meta:
         model = Blog
@@ -22,26 +26,36 @@ class BlogSerializer(serializers.ModelSerializer):
 
     def get_views(self, obj):
         return obj.hit_count.hits if hasattr(obj, "hit_count") else 0
-        
+
+
 class CategorySerializer(serializers.ModelSerializer):
+    image = serializers.ImageField(required=False)
+    image_url = serializers.URLField(read_only=True)
+
     class Meta:
         model = Category
         fields = "__all__"
 
 
 class SubcategorySerializer(serializers.ModelSerializer):
-    category_name = serializers.CharField(source="category.title", read_only=True)
+    categories = serializers.PrimaryKeyRelatedField(
+        many=True, read_only=True
+    )
 
     class Meta:
         model = Subcategory
         fields = "__all__"
         read_only_fields = ("slug",)
-        
+
+
 class ApplicationImageSerializer(serializers.ModelSerializer):
+    image = serializers.ImageField(required=False)
+    image_url = serializers.URLField(read_only=True)
+
     class Meta:
         model = ApplicationImage
-        fields = ["id", "application", "image"]
-        read_only_fields = ["id"]
+        fields = ["id", "application", "image", "image_url"]
+        read_only_fields = ["id", "image_url"]
 
 
 class ApplicationSerializer(serializers.ModelSerializer):
@@ -56,13 +70,38 @@ class ApplicationSerializer(serializers.ModelSerializer):
         category = data.get("category") or getattr(self.instance, "category", None)
         subcategory = data.get("subcategory") or getattr(self.instance, "subcategory", None)
 
-        if subcategory and category and subcategory.category != category:
+        if subcategory and category and category not in subcategory.categories.all():
             raise serializers.ValidationError(
-                {"subcategory": f"Tanlangan subcategory '{subcategory}' faqat '{subcategory.category}' "
-                                f"categoriyasiga tegishli. Siz esa '{category}' categoriyasini tanladingiz."}
+                {"subcategory": f"Tanlangan subcategory '{subcategory}' faqat '{', '.join([c.title for c in subcategory.categories.all()])}' "
+                                f"kategoriyasiga tegishli. Siz esa '{category}' kategoriyasini tanladingiz."}
             )
         return data
+
+
+class UserSerializer(serializers.ModelSerializer):
+    profile = serializers.SerializerMethodField()
     
+    class Meta:
+        model = User
+        fields = ["id", "email", "profile"]
+    
+    def get_profile(self, obj):
+        try:
+            profile = obj.profile
+            return ProfileSerializer(profile).data
+        except Profile.DoesNotExist:
+            return None
+
+
+class ProfileSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(source='user.email', read_only=True)
+    
+    class Meta:
+        model = Profile
+        fields = ["id", "email", "first_name", "last_name", "birth_date"]
+        read_only_fields = ["id", "email"]
+
+
 class RegisterSerializer(serializers.ModelSerializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True, min_length=6)
@@ -73,12 +112,12 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
-            raise serializers.ValidationError("Bu email allaqachon ro‘yxatdan o‘tgan.")
+            raise serializers.ValidationError("Bu email allaqachon ro'yxatdan o'tgan.")
         return value
 
     def create(self, validated_data):
         user = User.objects.create_user(
-            username=validated_data["email"],  # username sifatida email ishlatyapmiz
+            username=validated_data["email"],
             email=validated_data["email"],
             password=validated_data["password"],
         )
@@ -93,16 +132,26 @@ class LoginSerializer(serializers.Serializer):
         email = data.get("email")
         password = data.get("password")
 
-        user = authenticate(username=email, password=password)
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise serializers.ValidationError("Email yoki parol noto'g'ri")
+
+        user = authenticate(username=user.username, password=password)
         if not user:
-            raise serializers.ValidationError("Email yoki parol noto‘g‘ri")
+            raise serializers.ValidationError("Email yoki parol noto'g'ri")
 
         refresh = RefreshToken.for_user(user)
+        user_data = UserSerializer(user).data
+        
         return {
             "refresh": str(refresh),
             "access": str(refresh.access_token),
-            "user": {
-                "id": user.id,
-                "email": user.email,
-            }
+            "user": user_data
         }
+
+
+class LoginResponseSerializer(serializers.Serializer):
+    refresh = serializers.CharField()
+    access = serializers.CharField()
+    user = UserSerializer()

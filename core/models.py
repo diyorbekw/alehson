@@ -1,77 +1,14 @@
+import requests
+import base64
 from django.db import models
 from django.utils.text import slugify
-from ckeditor_uploader.fields import RichTextUploadingField
 from django.core.exceptions import ValidationError
+from ckeditor_uploader.fields import RichTextUploadingField
 from hitcount.models import HitCountMixin, HitCount
 from django.contrib.contenttypes.fields import GenericRelation
+from django.contrib.auth.models import User
 
-class About(models.Model):
-    main_title = models.CharField(max_length=255)
-    main_image = models.ImageField(upload_to='about/')
-    hero_title = models.CharField(max_length=255)
-    description = models.TextField()
-
-    def __str__(self):
-        return self.main_title
-    
-    class Meta:
-        verbose_name = 'About'
-        verbose_name_plural = 'About'
-
-class Blog(models.Model, HitCountMixin):
-    title = models.CharField(max_length=200)
-    description = models.CharField(max_length=255)
-    content = RichTextUploadingField()
-    region = models.CharField(max_length=100)
-    image = models.ImageField(upload_to="blogs/")
-    created_date = models.DateTimeField(auto_now_add=True)
-    slug = models.SlugField(unique=True, blank=True)
-
-    hit_count_generic = GenericRelation(
-        HitCount,
-        object_id_field="object_pk",
-        related_query_name="hit_count_generic_relation"
-    )
-
-    def save(self, *args, **kwargs): 
-        if not self.slug:
-            self.slug = slugify(self.title)
-        super().save(*args, **kwargs)
-
-    def __str__(self):
-        return self.title
-
-class Category(models.Model):
-    image = models.ImageField(upload_to="categories/")
-    title = models.CharField(max_length=100, unique=True)
-
-    def __str__(self):
-        return self.title
-    
-    class Meta:
-        verbose_name = 'Category'
-        verbose_name_plural = 'Categories'
-
-
-class Subcategory(models.Model):
-    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="subcategories")
-    title = models.CharField(max_length=100)
-    slug = models.SlugField(unique=True, blank=True)
-
-    def save(self, *args, **kwargs):
-        if not self.slug:
-            self.slug = slugify(self.title)
-        super().save(*args, **kwargs)
-
-    def __str__(self):
-        return f"{self.category.title} → {self.title}"
-    
-    class Meta:
-        verbose_name = 'Subcategory'
-        verbose_name_plural = 'Subcategories'
-        
-class Application(models.Model):
-    REGION_CHOICES = [
+REGION_CHOICES = [
         ('Toshkent', 'Toshkent'),
         ('Samarqand', 'Samarqand'),
         ('Buxoro', 'Buxoro'),
@@ -86,6 +23,138 @@ class Application(models.Model):
         ('Navoiy', 'Navoiy'),
         ('Qoraqalpog\'iston', 'Qoraqalpog\'iston'),
     ]
+
+IMGBB_API_KEY = "be90fbfa79386858ac1e2259531ab55e"
+
+
+def upload_to_imgbb(image_field):
+    """Rasmni imgbb ga yuklab, URL qaytaradi"""
+    image_file = image_field.file
+    url = "https://api.imgbb.com/1/upload"
+    payload = {
+        "key": IMGBB_API_KEY,
+        "image": base64.b64encode(image_file.read()),
+    }
+    res = requests.post(url, payload)
+    res.raise_for_status()
+    data = res.json()
+    return data["data"]["url"]
+
+
+# ---------------- Profile ----------------
+class Profile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
+    first_name = models.CharField(max_length=100, blank=True, null=True)
+    last_name = models.CharField(max_length=100, blank=True, null=True)
+    birth_date = models.DateField(blank=True, null=True)
+
+    def __str__(self):
+        return f"Profile of {self.user.email}"
+
+
+# ---------------- About ----------------
+class About(models.Model):
+    main_title = models.CharField(max_length=255)
+    main_image = models.ImageField(upload_to="temp/")   # vaqtincha yuklanadi
+    main_image_url = models.URLField(max_length=500, blank=True)  # imgbb URL
+    hero_title = models.CharField(max_length=255)
+    description = models.TextField()
+
+    def save(self, *args, **kwargs):
+        if self.main_image and not self.main_image_url:
+            self.main_image_url = upload_to_imgbb(self.main_image)
+            self.main_image.delete(save=False)  # PCdan o‘chirib tashlaymiz
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.main_title
+    
+    class Meta:
+        verbose_name = "About"
+        verbose_name_plural = "About"
+
+
+# ---------------- Blog ----------------
+class Blog(models.Model, HitCountMixin):
+    title = models.CharField(max_length=200)
+    description = models.CharField(max_length=255)
+    content = RichTextUploadingField()
+    region = models.CharField(max_length=100)
+    image = models.ImageField(upload_to="temp/")
+    image_url = models.URLField(max_length=500, blank=True)
+    created_date = models.DateTimeField(auto_now_add=True)
+    slug = models.SlugField(unique=True, blank=True)
+
+    hit_count_generic = GenericRelation(
+        HitCount,
+        object_id_field="object_pk",
+        related_query_name="hit_count_generic_relation"
+    )
+
+    def save(self, *args, **kwargs):
+        if self.image and not self.image_url:
+            self.image_url = upload_to_imgbb(self.image)
+            self.image.delete(save=False)
+        if not self.slug:
+            self.slug = slugify(self.title)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.title
+
+
+# ---------------- Category ----------------
+class Category(models.Model):
+    image = models.ImageField(upload_to="temp/")
+    image_url = models.URLField(max_length=500, blank=True)
+    title = models.CharField(max_length=100, unique=True)
+    subcategories = models.ManyToManyField(
+        "Subcategory",
+        related_name="categories",
+        blank=True
+    )
+
+    def save(self, *args, **kwargs):
+        if self.image and not self.image_url:
+            self.image_url = upload_to_imgbb(self.image)
+            self.image.delete(save=False)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.title
+    
+    class Meta:
+        verbose_name = "Category"
+        verbose_name_plural = "Categories"
+
+
+# ---------------- Subcategory ----------------
+class Subcategory(models.Model):
+    title = models.CharField(max_length=100)
+    slug = models.SlugField(unique=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.title)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        categories = ", ".join([c.title for c in self.categories.all()])
+        return f"{self.title} ({categories})"
+    
+    class Meta:
+        verbose_name = "Subcategory"
+        verbose_name_plural = "Subcategories"
+
+
+# ---------------- Application ----------------
+class Application(models.Model):
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("accepted", "Accepted"),
+        ("denied", "Denied"),
+    ]
+
     full_name = models.CharField(max_length=255)
     phone_number = models.CharField(max_length=20)
     birth_date = models.DateField()
@@ -97,17 +166,24 @@ class Application(models.Model):
     description = models.TextField()
     slug = models.SlugField(unique=True, blank=True)
 
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="pending"
+    )
+    denied_reason = models.TextField(blank=True, null=True)
+
     def clean(self):
-        # category va subcategory mosligini tekshirish
-        if self.subcategory and self.subcategory.category != self.category:
+        if self.subcategory and self.category not in self.subcategory.categories.all():
             raise ValidationError({
                 "subcategory": f"Tanlangan subcategory '{self.subcategory}' "
-                               f"faqat '{self.subcategory.category}' categoriyasiga tegishli. "
-                               f"Siz esa '{self.category}' categoriyasini tanladingiz."
+                               f"'{self.category}' kategoriyasiga tegishli emas."
             })
+        if self.status == "denied" and not self.denied_reason:
+            raise ValidationError({"denied_reason": "Sabab kiritilishi kerak denied uchun."})
 
     def save(self, *args, **kwargs):
-        self.clean()  
+        self.clean()
         if not self.slug:
             base_slug = slugify(self.full_name)
             slug = base_slug
@@ -120,18 +196,28 @@ class Application(models.Model):
 
     def __str__(self):
         return self.full_name
-    
+
+
+
+# ---------------- Application Image ----------------
 class ApplicationImage(models.Model):
     application = models.ForeignKey(
         Application,
         related_name="images",
         on_delete=models.CASCADE
     )
-    image = models.ImageField(upload_to="applications/")
-    
+    image = models.ImageField(upload_to="temp/")
+    image_url = models.URLField(max_length=500, blank=True)
+
+    def save(self, *args, **kwargs):
+        if self.image and not self.image_url:
+            self.image_url = upload_to_imgbb(self.image)
+            self.image.delete(save=False)
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"Image for {self.application.full_name}"
     
     class Meta:
-        verbose_name = 'Application Image'
-        verbose_name_plural = 'Application Images'
+        verbose_name = "Application Image"
+        verbose_name_plural = "Application Images"

@@ -18,11 +18,17 @@ class BlogAdmin(admin.ModelAdmin):
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
     list_display = ('title',)
+    filter_horizontal = ('subcategories',)  # admin interfeysida ko‘proq qulay bo‘ladi
     
+
 @admin.register(Subcategory)
 class SubcategoryAdmin(admin.ModelAdmin):
-    list_display = ('title', 'category', 'slug')
+    list_display = ('title', 'get_categories', 'slug')
     prepopulated_fields = {'slug': ('title',)}
+
+    def get_categories(self, obj):
+        return ", ".join([c.title for c in obj.categories.all()])
+    get_categories.short_description = "Categories"
     
 @admin.register(Application)
 class ApplicationAdmin(admin.ModelAdmin):

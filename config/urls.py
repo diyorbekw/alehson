@@ -10,22 +10,31 @@ schema_view = get_schema_view(
     openapi.Info(
         title="Alehson API",
         default_version="v1",
-        description="Google Auth bilan ishlaydigan API",
+        description="Alehson uchun API",
         terms_of_service="https://www.google.com/policies/terms/",
         contact=openapi.Contact(email="support@alehson.uz"),
         license=openapi.License(name="BSD License"),
     ),
     public=True,
     permission_classes=(permissions.AllowAny,),
-    url="https://api.alehson.uz/api",  
 )
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("api/", include("core.urls")),  # ✅ `api/` prefiksi qo'shildi
-    path('accounts/', include('allauth.urls')),
-    path('ckeditor/', include('ckeditor_uploader.urls')),
-    re_path(r"^swagger(?P<format>\.json|\.yaml)$", schema_view.without_ui(cache_timeout=0), name="schema-json"),
+
+    # API hammasi /api/ ostida - TO'G'RI YO'L
+    path("api/", include("core.urls")),
+
+    # Auth & tools
+    path("accounts/", include("allauth.urls")),
+    path("ckeditor/", include("ckeditor_uploader.urls")),
+
+    # Swagger va Redoc - API PREFIKSINI OLIB TASHLAYMIZ
+    re_path(
+        r"^swagger(?P<format>\.json|\.yaml)$",
+        schema_view.without_ui(cache_timeout=0),
+        name="schema-json",
+    ),
     path("swagger/", schema_view.with_ui("swagger", cache_timeout=0), name="schema-swagger-ui"),
     path("redoc/", schema_view.with_ui("redoc", cache_timeout=0), name="schema-redoc"),
 ]
