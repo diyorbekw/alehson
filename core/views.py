@@ -349,7 +349,6 @@ class TestAuthView(APIView):
         
 class StatisticsAPIView(APIView):
     permission_classes = [AllowAny]  # agar faqat adminlarga bo‘lsin desang -> [IsAdminUser]
-
     @swagger_auto_schema(
         operation_description="Umumiy statistika",
         responses={200: openapi.Schema(
