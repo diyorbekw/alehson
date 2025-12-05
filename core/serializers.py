@@ -60,11 +60,25 @@ class ApplicationImageSerializer(serializers.ModelSerializer):
 
 class ApplicationSerializer(serializers.ModelSerializer):
     images = ApplicationImageSerializer(many=True, read_only=True)
+    category_title = serializers.SerializerMethodField()
+    subcategory_title = serializers.SerializerMethodField()
 
     class Meta:
         model = Application
-        fields = "__all__"
-        read_only_fields = ("slug",)
+        fields = [
+            "id", "slug", "full_name", "phone_number", "birth_date",
+            "passport_number", "region", "location", 
+            "category", "subcategory",  # Bu hali ham foreign key ID sifatida qoladi
+            "category_title", "subcategory_title",  # Yangi fieldlar
+            "description", "status", "denied_reason", "images"
+        ]
+        read_only_fields = ("slug", "category_title", "subcategory_title")
+
+    def get_category_title(self, obj):
+        return obj.category.title if obj.category else None
+
+    def get_subcategory_title(self, obj):
+        return obj.subcategory.title if obj.subcategory else None
 
     def validate(self, data):
         category = data.get("category") or getattr(self.instance, "category", None)
@@ -72,8 +86,9 @@ class ApplicationSerializer(serializers.ModelSerializer):
 
         if subcategory and category and category not in subcategory.categories.all():
             raise serializers.ValidationError(
-                {"subcategory": f"Tanlangan subcategory '{subcategory}' faqat '{', '.join([c.title for c in subcategory.categories.all()])}' "
-                                f"kategoriyasiga tegishli. Siz esa '{category}' kategoriyasini tanladingiz."}
+                {"subcategory": f"Tanlangan subcategory '{subcategory}' faqat "
+                 f"'{', '.join([c.title for c in subcategory.categories.all()])}' "
+                 f"kategoriyasiga tegishli. Siz esa '{category}' kategoriyasini tanladingiz."}
             )
         return data
 

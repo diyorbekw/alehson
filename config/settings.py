@@ -4,9 +4,10 @@ from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# 🚨 Production uchun DEBUG doim False
-DEBUG = False  
+# 🚨 DEBUG sozlamasi
+DEBUG = False  # Production uchun False
 
+# 🚨 Secret key - ishlatayotganingizni qoldiramiz
 SECRET_KEY = 'django-insecure-(n84&=0@4)^rsih1&f%@a+8sbh5_2ppp!uh9^j_e3ktn22xh3t'
 
 ALLOWED_HOSTS = [
@@ -42,8 +43,11 @@ INSTALLED_APPS = [
     'ckeditor',
     'ckeditor_uploader',
     "hitcount",
-    # "sslserver",   # 🚫 Faqat local uchun, productionda kerak emas
 ]
+
+# SSL server faqat developmentda kerak
+if DEBUG:
+    INSTALLED_APPS.append("sslserver")
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -79,17 +83,28 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # ---------------- Database ----------------
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',   # 🚨 Productionda PostgreSQL ishlatish tavsiya
+        'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
 # ---------------- Password validators ----------------
 AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {
+            'min_length': 8,
+        }
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
 ]
 
 # ---------------- Internationalization ----------------
@@ -101,6 +116,11 @@ USE_TZ = True
 # ---------------- Static / Media ----------------
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Static fayllarni qo'shimcha joylari
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
@@ -164,7 +184,9 @@ CORS_ALLOW_ALL_ORIGINS = False  # Xavfsizlik uchun
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
+    "http://localhost:8000",
     "http://127.0.0.1:3000",
+    "http://127.0.0.1:8000",
     "https://alehson.sifatdev.uz",
     "https://api.alehson.uz",
 ]
@@ -223,8 +245,7 @@ SWAGGER_SETTINGS = {
 }
 
 # 🚀 Production uchun xavfsizlik sozlamalari
-SWAGGER_SETTINGS["DEFAULT_API_URL"] = "https://api.alehson.uz"
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'http')
 USE_X_FORWARDED_HOST = True
 SECURE_SSL_REDIRECT = True
 SESSION_COOKIE_SECURE = True
