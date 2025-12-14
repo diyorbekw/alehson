@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="uz">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -21,14 +22,19 @@
       background: rgba(255, 255, 255, 0.1);
       padding: 50px;
       border-radius: 20px;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
       text-align: center;
       backdrop-filter: blur(10px);
     }
 
-    h2 { margin-bottom: 30px; font-size: 30px; font-weight: 600; }
+    h2 {
+      margin-bottom: 30px;
+      font-size: 30px;
+      font-weight: 600;
+    }
 
-    .btn-google, .btn-logout {
+    .btn-google,
+    .btn-logout {
       display: flex;
       align-items: center;
       justify-content: center;
@@ -49,10 +55,13 @@
 
     .btn-google:hover {
       background: #f5f5f5;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     }
 
-    .btn-google img { width: 20px; height: 20px; }
+    .btn-google img {
+      width: 20px;
+      height: 20px;
+    }
 
     .btn-logout {
       background: #ff6b6b;
@@ -61,104 +70,119 @@
 
     .btn-logout:hover {
       background: #ff4c4c;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     }
 
-    .note { margin-top: 20px; font-size: 14px; color: #f0f0f0; opacity: 0.8; }
-    .error { margin-top: 15px; color: #ff6b6b; background: rgba(255,255,255,0.1); padding: 10px; border-radius: 5px; display: none; }
+    .note {
+      margin-top: 20px;
+      font-size: 14px;
+      color: #f0f0f0;
+      opacity: 0.8;
+    }
+
+    .error {
+      margin-top: 15px;
+      color: #ff6b6b;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 10px;
+      border-radius: 5px;
+      display: none;
+    }
   </style>
 </head>
+
 <body>
-<div class="login-container">
-  <h2 id="login-title">Google orqali ro'yxatdan o'tish</h2>
+  <div class="login-container">
+    <h2 id="login-title">Google orqali ro'yxatdan o'tish</h2>
 
-  <button class="btn-google" id="google-login-btn">
-    <i class="fa-brands fa-google"></i>
-    Google orqali kirish
-  </button>
+    <button class="btn-google" id="google-login-btn">
+      <i class="fa-brands fa-google"></i>
+      Google orqali kirish
+    </button>
 
-  <button class="btn-logout" id="logout-btn" style="display:none;">Chiqish</button>
+    <button class="btn-logout" id="logout-btn" style="display:none;">Chiqish</button>
 
-  <div class="note">Sizning akkauntingiz Google orqali xavfsiz tarzda tekshiriladi.</div>
-  <div id="error-message" class="error"></div>
-</div>
+    <div class="note">Sizning akkauntingiz Google orqali xavfsiz tarzda tekshiriladi.</div>
+    <div id="error-message" class="error"></div>
+  </div>
 
-<script>
-const CLIENT_ID = "361063973890-8d4b4k1u2irq4q8cjsn8okg88ih7d98d.apps.googleusercontent.com";
-const REDIRECT_URI = "http://localhost:8000";
+  <script>
+    const CLIENT_ID = "{{ client_id }}"
+    const REDIRECT_URI = "http://localhost:8000"
 
-const loginTitle = document.getElementById('login-title');
-const googleBtn = document.getElementById('google-login-btn');
-const logoutBtn = document.getElementById('logout-btn');
-const errorDiv = document.getElementById('error-message');
+    const loginTitle = document.getElementById('login-title')
+    const googleBtn = document.getElementById('google-login-btn')
+    const logoutBtn = document.getElementById('logout-btn')
+    const errorDiv = document.getElementById('error-message')
 
-// Tugma bosilganda Google OAuth sahifasiga yo'naltirish
-googleBtn.addEventListener('click', () => {
-    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&response_type=id_token&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=openid%20email%20profile&nonce=random_nonce`;
-    window.location.href = authUrl;
-});
+    // Tugma bosilganda Google OAuth sahifasiga yo'naltirish
+    googleBtn.addEventListener('click', () => {
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&response_type=id_token&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=openid%20email%20profile&nonce=random_nonce`
+      window.location.href = authUrl
+    })
 
-// Chiqish tugmasi
-logoutBtn.addEventListener('click', () => {
-    localStorage.removeItem("access");
-    localStorage.removeItem("refresh");
-    window.location.href = "/";
-});
+    // Chiqish tugmasi
+    logoutBtn.addEventListener('click', () => {
+      localStorage.removeItem("access")
+      localStorage.removeItem("refresh")
+      window.location.href = "/"
+    })
 
-// URL fragmentidan tokenni olish
-function parseTokenFromURL() {
-    const hash = window.location.hash.substr(1);
-    const result = {};
-    hash.split('&').forEach(item => {
-        if (!item) return;
-        const [key, value] = item.split('=');
-        result[key] = decodeURIComponent(value);
-    });
-    return result;
-}
+    // URL fragmentidan tokenni olish
+    function parseTokenFromURL() {
+      const hash = window.location.hash.substr(1)
+      const result = {}
+      hash.split('&').forEach(item => {
+        if (!item) return
+        const [key, value] = item.split('=')
+        result[key] = decodeURIComponent(value)
+      })
+      return result
+    }
 
-// Sahifa yuklanganda tokenni backendga yuborish va foydalanuvchi holatini tekshirish
-document.addEventListener('DOMContentLoaded', async () => {
-    const tokens = parseTokenFromURL();
+    // Sahifa yuklanganda tokenni backendga yuborish va foydalanuvchi holatini tekshirish
+    document.addEventListener('DOMContentLoaded', async () => {
+      const tokens = parseTokenFromURL()
 
-    if (tokens.id_token || localStorage.getItem("access")) {
-        let tokenToSend = tokens.id_token || localStorage.getItem("access");
+      if (tokens.id_token || localStorage.getItem("access")) {
+        let tokenToSend = tokens.id_token || localStorage.getItem("access")
 
         try {
-            const res = await fetch("/api/auth/google/", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ token: tokenToSend }),
-            });
-            const data = await res.json();
+          const res = await fetch("/api/auth/google/", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: tokenToSend }),
+          })
+          const data = await res.json()
 
-            if (res.ok) {
-                // Foydalanuvchi ro'yxatdan o'tgan
-                loginTitle.textContent = `Siz ro'yxatdan o'tgansiz: ${data.user.email}`;
-                localStorage.setItem("access", data.access);
-                localStorage.setItem("refresh", data.refresh);
-                googleBtn.style.display = 'none';
-                logoutBtn.style.display = 'flex';
-            } else {
-                loginTitle.textContent = "Google orqali ro'yxatdan o'tish";
-                googleBtn.style.display = 'flex';
-                logoutBtn.style.display = 'none';
-                errorDiv.textContent = data.error || data.detail || "Noma'lum xatolik";
-                errorDiv.style.display = "block";
-            }
+          if (res.ok) {
+            // Foydalanuvchi ro'yxatdan o'tgan
+            loginTitle.textContent = `Siz ro'yxatdan o'tgansiz: ${data.user.email}`
+            localStorage.setItem("access", data.access)
+            localStorage.setItem("refresh", data.refresh)
+            googleBtn.style.display = 'none'
+            logoutBtn.style.display = 'flex'
+          } else {
+            loginTitle.textContent = "Google orqali ro'yxatdan o'tish"
+            googleBtn.style.display = 'flex'
+            logoutBtn.style.display = 'none'
+            errorDiv.textContent = data.error || data.detail || "Noma'lum xatolik"
+            errorDiv.style.display = "block"
+          }
         } catch (err) {
-            loginTitle.textContent = "Google orqali ro'yxatdan o'tish";
-            googleBtn.style.display = 'flex';
-            logoutBtn.style.display = 'none';
-            errorDiv.textContent = "Tarmoq yoki server xatosi: " + err.message;
-            errorDiv.style.display = "block";
+          loginTitle.textContent = "Google orqali ro'yxatdan o'tish"
+          googleBtn.style.display = 'flex'
+          logoutBtn.style.display = 'none'
+          errorDiv.textContent = "Tarmoq yoki server xatosi: " + err.message
+          errorDiv.style.display = "block"
         }
-    } else {
-        loginTitle.textContent = "Google orqali ro'yxatdan o'tish";
-        googleBtn.style.display = 'flex';
-        logoutBtn.style.display = 'none';
-    }
-});
-</script>
+      } else {
+        loginTitle.textContent = "Google orqali ro'yxatdan o'tish"
+        googleBtn.style.display = 'flex'
+        logoutBtn.style.display = 'none'
+      }
+    });
+  </script>
 </body>
+
 </html>

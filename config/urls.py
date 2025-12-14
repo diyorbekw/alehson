@@ -22,7 +22,9 @@ schema_view = get_schema_view(
 urlpatterns = [
     path("admin/", admin.site.urls),
 
-    # API hammasi /api/ ostida - TO'G'RI YO'L
+    path("api/auth/", include("dj_rest_auth.urls")),
+    path("api/auth/registration/", include("dj_rest_auth.registration.urls")),
+
     path("api/", include("core.urls")),
 
     # Auth & tools

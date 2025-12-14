@@ -53,7 +53,8 @@ class GoogleAuthView(APIView):
             return Response({"error": "Token required"}, status=400)
 
         try:
-            idinfo = id_token.verify_oauth2_token(token, requests.Request())
+            from django.conf import settings
+            idinfo = id_token.verify_oauth2_token(token, requests.Request(), settings.GOOGLE_CLIENT_ID)
             email = idinfo.get("email")
             name = idinfo.get("name")
 
@@ -81,7 +82,8 @@ class GoogleAuthView(APIView):
 
 
 def index(request):
-    return render(request, "index.html")
+    from django.conf import settings
+    return render(request, "index.html", {"client_id": settings.GOOGLE_CLIENT_ID})
 
 
 @login_required
