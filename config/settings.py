@@ -206,6 +206,7 @@ SWAGGER_SETTINGS = {
             "in": "header",
         }
     },
+    "DEFAULT_API_URL": "http://api.alehson.uz",
 }
 
 # ---------------- Production SSL ----------------
