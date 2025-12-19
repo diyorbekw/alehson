@@ -124,6 +124,21 @@ class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ["id", "email", "password"]
+        # Bu qatorni qo'shing:
+        ref_name = "CoreRegisterSerializer"  # Har qanday noyob nom berishingiz mumkin
+
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("Bu email allaqachon ro'yxatdan o'tgan.")
+        return value
+
+    def create(self, validated_data):
+        user = User.objects.create_user(
+            username=validated_data["email"],
+            email=validated_data["email"],
+            password=validated_data["password"],
+        )
+        return user
 
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
