@@ -72,6 +72,20 @@ class SubcategorySerializer(serializers.ModelSerializer):
         """Har bir subcategoryga tegishli categorylarning title'larini qaytarish"""
         return [category.title for category in obj.categories.all()]
 
+# ===============================================
+# CUSTOM FIELD FOR MULTIPART FORM DATA
+# ===============================================
+class MultiPartJSONField(serializers.JSONField):
+    """JSON ma'lumotlarini multipart/form-data dan qabul qilish uchun"""
+    def to_internal_value(self, data):
+        if isinstance(data, str):
+            try:
+                import json
+                return json.loads(data)
+            except json.JSONDecodeError:
+                raise serializers.ValidationError("Invalid JSON string")
+        return data
+
 
 # ---------------- ApplicationImage ----------------
 class ApplicationImageSerializer(serializers.ModelSerializer):
@@ -84,15 +98,27 @@ class ApplicationImageSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "image_url"]
 
 
-# ---------------- Application ----------------
+# ===============================================
+# APPLICATION SERIALIZER WITH MULTIPART SUPPORT
+# ===============================================
 class ApplicationSerializer(serializers.ModelSerializer):
     images = ApplicationImageSerializer(many=True, read_only=True)
-    category = CategorySerializer(read_only=True)
-    subcategory = SubcategorySerializer(read_only=True)
+    category = serializers.PrimaryKeyRelatedField(
+        queryset=Category.objects.all(),
+        required=True
+    )
+    subcategory = serializers.PrimaryKeyRelatedField(
+        queryset=Subcategory.objects.all(),
+        required=True
+    )
     video = serializers.FileField(required=False, allow_null=True)
     video_url = serializers.URLField(read_only=True)
     document = serializers.FileField(required=False, allow_null=True)
     document_url = serializers.URLField(read_only=True)
+    
+    # Category va subcategory malumotlarini ID orqali qabul qilish
+    category_id = serializers.IntegerField(write_only=True, required=False)
+    subcategory_id = serializers.IntegerField(write_only=True, required=False)
 
     class Meta:
         model = Application
@@ -100,20 +126,23 @@ class ApplicationSerializer(serializers.ModelSerializer):
             "id", "slug", "full_name", "phone_number", "birth_date",
             "passport_number", "region", "location", 
             "category", "subcategory",
+            "category_id", "subcategory_id",  # Write only fields
             "description", "video", "video_url", "document", "document_url",
             "status", "denied_reason", "images", "created_date"
         ]
-        read_only_fields = ("slug", "category", "subcategory", "video_url", "document_url", "created_date")
+        read_only_fields = ("slug", "video_url", "document_url", "created_date")
 
-    def get_category(self, obj):
-        return obj.category
-
-    def get_subcategory(self, obj):
-        return obj.subcategory
+    def to_internal_value(self, data):
+        # category_id va subcategory_id ni category va subcategoryga o'tkazish
+        if 'category_id' in data:
+            data['category'] = data.pop('category_id')
+        if 'subcategory_id' in data:
+            data['subcategory'] = data.pop('subcategory_id')
+        return super().to_internal_value(data)
 
     def validate(self, data):
-        category = data.get("category") or getattr(self.instance, "category", None)
-        subcategory = data.get("subcategory") or getattr(self.instance, "subcategory", None)
+        category = data.get("category")
+        subcategory = data.get("subcategory")
 
         if subcategory and category and category not in subcategory.categories.all():
             raise serializers.ValidationError(
@@ -124,9 +153,50 @@ class ApplicationSerializer(serializers.ModelSerializer):
         return data
     
     def create(self, validated_data):
-        # Remove image field if present (it will be handled in save method)
-        validated_data.pop('image', None)
         return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        return super().update(instance, validated_data)
+    
+# ===============================================
+# APPLICATION CREATE SERIALIZER (For multipart form)
+# ===============================================
+class ApplicationCreateSerializer(serializers.ModelSerializer):
+    category = serializers.PrimaryKeyRelatedField(
+        queryset=Category.objects.all(),
+        required=True
+    )
+    subcategory = serializers.PrimaryKeyRelatedField(
+        queryset=Subcategory.objects.all(),
+        required=True
+    )
+    video = serializers.FileField(required=False, allow_null=True)
+    document = serializers.FileField(required=False, allow_null=True)
+
+    class Meta:
+        model = Application
+        fields = [
+            "full_name", "phone_number", "birth_date",
+            "passport_number", "region", "location", 
+            "category", "subcategory",
+            "description", "video", "document"
+        ]
+
+    
+# ===============================================
+# APPLICATION UPDATE SERIALIZER (For multipart form)
+# ===============================================
+class ApplicationUpdateSerializer(serializers.ModelSerializer):
+    video = serializers.FileField(required=False, allow_null=True)
+    document = serializers.FileField(required=False, allow_null=True)
+    
+    class Meta:
+        model = Application
+        fields = [
+            "full_name", "phone_number", "birth_date",
+            "passport_number", "region", "location", 
+            "description", "video", "document"
+        ]
 
 
 class UserSerializer(serializers.ModelSerializer):
