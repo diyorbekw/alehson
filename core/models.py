@@ -8,6 +8,13 @@ from hitcount.models import HitCountMixin, HitCount
 from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.auth.models import User
 
+CONTACT_THEME_CHOICES = [
+    ('Ehson haqida', 'Ehson haqida'),
+    ('Hamkorlik', 'Hamkorlik'),
+    ('Texnik masala', 'Texnik masala'),
+    ('Boshqa', 'Boshqa'),
+]
+
 REGION_CHOICES = [
         ('Toshkent', 'Toshkent'),
         ('Samarqand', 'Samarqand'),
@@ -41,6 +48,7 @@ def upload_to_imgbb(image_field):
     return data["data"]["url"]
 
 
+
 # ---------------- Profile ----------------
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
@@ -50,6 +58,29 @@ class Profile(models.Model):
 
     def __str__(self):
         return f"Profile of {self.user.email}"
+
+
+# ---------------- Banner ----------------
+class Banner(models.Model):
+    image = models.ImageField(upload_to="temp/")
+    image_url = models.URLField(max_length=500, blank=True)
+    created_date = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
+
+    def save(self, *args, **kwargs):
+        if self.image and not self.image_url:
+            try:
+                self.image_url = upload_to_imgbb(self.image)
+                self.image.delete(save=False)  # PCdan o'chirib tashlaymiz
+            except ValidationError as e:
+                raise e
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Banner {self.id} ({'Active' if self.is_active else 'Inactive'})"
+    
+    class Meta:
+        ordering = ['-created_date']
 
 
 # ---------------- About ----------------
@@ -62,8 +93,11 @@ class About(models.Model):
 
     def save(self, *args, **kwargs):
         if self.main_image and not self.main_image_url:
-            self.main_image_url = upload_to_imgbb(self.main_image)
-            self.main_image.delete(save=False)  # PCdan o‘chirib tashlaymiz
+            try:
+                self.main_image_url = upload_to_imgbb(self.main_image)
+                self.main_image.delete(save=False)  # PCdan o'chirib tashlaymiz
+            except ValidationError as e:
+                raise e
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -74,12 +108,30 @@ class About(models.Model):
         verbose_name_plural = "About"
 
 
+# ---------------- ContactUs ----------------
+class ContactUs(models.Model):
+    full_name = models.CharField(max_length=100)
+    email = models.EmailField()
+    theme = models.CharField(max_length=50, choices=CONTACT_THEME_CHOICES)
+    message = models.TextField()
+    created_date = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.full_name} - {self.theme}"
+    
+    class Meta:
+        verbose_name = "Contact Message"
+        verbose_name_plural = "Contact Messages"
+        ordering = ['-created_date']
+
+
 # ---------------- Blog ----------------
 class Blog(models.Model, HitCountMixin):
     title = models.CharField(max_length=200)
     description = models.CharField(max_length=255)
     content = RichTextUploadingField()
-    region = models.CharField(max_length=100)
+    region = models.CharField(max_length=100, choices=REGION_CHOICES)
     image = models.ImageField(upload_to="temp/")
     image_url = models.URLField(max_length=500, blank=True)
     created_date = models.DateTimeField(auto_now_add=True)
@@ -93,14 +145,20 @@ class Blog(models.Model, HitCountMixin):
 
     def save(self, *args, **kwargs):
         if self.image and not self.image_url:
-            self.image_url = upload_to_imgbb(self.image)
-            self.image.delete(save=False)
+            try:
+                self.image_url = upload_to_imgbb(self.image)
+                self.image.delete(save=False)
+            except ValidationError as e:
+                raise e
         if not self.slug:
             self.slug = slugify(self.title)
         super().save(*args, **kwargs)
 
     def __str__(self):
         return self.title
+    
+    class Meta:
+        ordering = ['-created_date']
 
 
 # ---------------- Category ----------------
@@ -116,8 +174,11 @@ class Category(models.Model):
 
     def save(self, *args, **kwargs):
         if self.image and not self.image_url:
-            self.image_url = upload_to_imgbb(self.image)
-            self.image.delete(save=False)
+            try:
+                self.image_url = upload_to_imgbb(self.image)
+                self.image.delete(save=False)
+            except ValidationError as e:
+                raise e
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -164,7 +225,15 @@ class Application(models.Model):
     category = models.ForeignKey("Category", on_delete=models.CASCADE)
     subcategory = models.ForeignKey("Subcategory", on_delete=models.CASCADE)
     description = models.TextField()
+    
+    # Yangi fieldlar
+    video = models.FileField(upload_to="temp/", blank=True, null=True)
+    video_url = models.URLField(max_length=500, blank=True)
+    document = models.FileField(upload_to="temp/", blank=True, null=True)
+    document_url = models.URLField(max_length=500, blank=True)
+    
     slug = models.SlugField(unique=True, blank=True)
+    created_date = models.DateTimeField(auto_now_add=True)
 
     status = models.CharField(
         max_length=20,
@@ -192,11 +261,14 @@ class Application(models.Model):
                 slug = f"{base_slug}-{counter}"
                 counter += 1
             self.slug = slug
+
         super().save(*args, **kwargs)
 
     def __str__(self):
         return self.full_name
-
+    
+    class Meta:
+        ordering = ['-created_date']
 
 
 # ---------------- Application Image ----------------
@@ -211,8 +283,11 @@ class ApplicationImage(models.Model):
 
     def save(self, *args, **kwargs):
         if self.image and not self.image_url:
-            self.image_url = upload_to_imgbb(self.image)
-            self.image.delete(save=False)
+            try:
+                self.image_url = upload_to_imgbb(self.image)
+                self.image.delete(save=False)
+            except ValidationError as e:
+                raise e
         super().save(*args, **kwargs)
 
     def __str__(self):

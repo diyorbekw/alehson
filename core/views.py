@@ -6,32 +6,60 @@ from django.shortcuts import render
 from django.utils.text import slugify
 
 from google.oauth2 import id_token
-from google.auth.transport import requests
+from google.auth.transport import requests as google_requests
 
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework import status, viewsets
+from rest_framework import status, viewsets, filters
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.generics import CreateAPIView
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework import status as drf_status
 
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
-from .models import About, Blog, Category, Subcategory, Application, ApplicationImage, Profile
+from .models import About, Blog, Category, Subcategory, Application, ApplicationImage, Profile, Banner, ContactUs
 from .serializers import (
     AboutSerializer, BlogSerializer, CategorySerializer,
     SubcategorySerializer, ApplicationSerializer, ApplicationImageSerializer,
-    RegisterSerializer, LoginSerializer, ProfileSerializer, UserSerializer
+    RegisterSerializer, LoginSerializer, ProfileSerializer, UserSerializer, BannerSerializer, ContactUsSerializer
 )
 
 from hitcount.models import HitCount
 from hitcount.views import HitCountMixin as HCViewMixin
+from rest_framework import filters
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.permissions import IsAdminUser
+import requests
 
+# ===============================================
+# 🔔 TELEGRAMGA CONTACT US XABARINI YUBORISH FUNKSIYASI
+# ===============================================
+def send_telegram_message(full_name, email, theme, message, created_date):
+    text = (
+        f"📩 *Yangi Contact xabari!*\n\n"
+        f"👤 *Foydalanuvchi:* {full_name}\n"
+        f"📧 *Email:* {email}\n"
+        f"📝 *Mavzu:* {theme}\n"
+        f"💬 *Xabar:* {message}\n"
+        f"⏰ *Yuborilgan:* {created_date.strftime('%Y-%m-%d %H:%M')}"
+    )
+
+    url = f"https://api.telegram.org/bot8417763736:AAG4188kWn4LofdFhJvSVWHDzj-NSCiOTLM/sendMessage"
+    params = {
+        "chat_id": -5075343219,
+        "text": text,
+        "parse_mode": "Markdown"
+    }
+
+    try:
+        requests.post(url, params=params, timeout=5)
+    except Exception as e:
+        print("Telegram error:", e)
 
 # ---------------- Google Auth ----------------
 class GoogleAuthView(APIView):
@@ -118,6 +146,24 @@ class AboutAPIView(APIView):
             return Response(serializer.data)
         return Response(serializer.errors, status=400)
 
+# ===============================================
+# BANNER
+# ===============================================
+class BannerViewSet(viewsets.ModelViewSet):
+    queryset = Banner.objects.filter(is_active=True).order_by("-created_date")
+    serializer_class = BannerSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return Banner.objects.all().order_by("-created_date")
+        return Banner.objects.filter(is_active=True).order_by("-created_date")
+
+    @action(detail=False, methods=['get'], url_path='active')
+    def active_banners(self, request):
+        banners = Banner.objects.filter(is_active=True).order_by("-created_date")
+        serializer = self.get_serializer(banners, many=True)
+        return Response(serializer.data)
 
 # ---------------- Blog ----------------
 class BlogViewSet(viewsets.ModelViewSet):
@@ -144,7 +190,9 @@ class BlogViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-# ---------------- Category & Subcategory ----------------
+# ===============================================
+# CATEGORY & SUBCATEGORY
+# ===============================================
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
@@ -158,27 +206,31 @@ class SubcategoryViewSet(viewsets.ModelViewSet):
     permission_classes = [AllowAny]
 
     def perform_create(self, serializer):
-        title = serializer.validated_data.get("title")
-        slug = slugify(title)
+        slug = slugify(serializer.validated_data.get("title"))
         serializer.save(slug=slug)
 
     def perform_update(self, serializer):
-        title = serializer.validated_data.get("title")
-        slug = slugify(title)
+        slug = slugify(serializer.validated_data.get("title"))
         serializer.save(slug=slug)
 
 
-# ---------------- Application ----------------
+# ===============================================
+# APPLICATION
+# ===============================================
 class ApplicationViewSet(viewsets.ModelViewSet):
-    queryset = Application.objects.all().order_by("-id")
+    queryset = Application.objects.all().order_by("-created_date")
     serializer_class = ApplicationSerializer
     lookup_field = "slug"
     permission_classes = [AllowAny]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_fields = ['category', 'subcategory', 'status', 'region']
+    search_fields = ['full_name', 'phone_number', 'passport_number']
 
     def perform_create(self, serializer):
         full_name = serializer.validated_data.get("full_name")
         slug = slugify(full_name)
-        counter, new_slug = 1, slug
+        counter = 1
+        new_slug = slug
         while Application.objects.filter(slug=new_slug).exists():
             new_slug = f"{slug}-{counter}"
             counter += 1
@@ -187,7 +239,8 @@ class ApplicationViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         full_name = serializer.validated_data.get("full_name")
         slug = slugify(full_name)
-        counter, new_slug = 1, slug
+        counter = 1
+        new_slug = slug
         while Application.objects.filter(slug=new_slug).exclude(pk=self.get_object().pk).exists():
             new_slug = f"{slug}-{counter}"
             counter += 1
@@ -209,31 +262,28 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         denied_reason = request.data.get("denied_reason", "")
 
         if status_value not in ["pending", "accepted", "denied"]:
-            return Response(
-                {"error": "Noto‘g‘ri status qiymati"},
-                status=drf_status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": "Noto'g'ri status qiymati"}, status=400)
 
         application.status = status_value
-        if status_value == "denied":
-            application.denied_reason = denied_reason
-        else:
-            application.denied_reason = ""
+        application.denied_reason = denied_reason if status_value == "denied" else ""
+        application.save()
 
-        # faqat kerakli fieldlarni saqlaymiz → subcategory validation ishlamaydi
-        application.save(update_fields=["status", "denied_reason"])
-
-        return Response(
-            {"detail": "Status yangilandi", "status": application.status, "denied_reason": application.denied_reason},
-            status=drf_status.HTTP_200_OK
-        )
+        return Response({
+            "detail": "Status yangilandi",
+            "status": application.status,
+            "denied_reason": application.denied_reason
+        })
 
 
-# ---------------- ApplicationImage ----------------
+# ===============================================
+# APPLICATION IMAGE
+# ===============================================
 class ApplicationImageViewSet(viewsets.ModelViewSet):
     queryset = ApplicationImage.objects.all()
     serializer_class = ApplicationImageSerializer
     permission_classes = [AllowAny]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['application']
 
 
 # ---------------- Register / Login ----------------
@@ -377,3 +427,74 @@ class StatisticsAPIView(APIView):
             "total_subcategories": Subcategory.objects.count(),
         }
         return Response(data)
+    
+# ===============================================
+# CONTACT US
+# ===============================================
+class ContactUsViewSet(viewsets.ModelViewSet):
+    queryset = ContactUs.objects.all().order_by("-created_date")
+    serializer_class = ContactUsSerializer
+    permission_classes = [AllowAny]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve', 'update', 'partial_update', 'destroy']:
+            return [IsAdminUser()]
+        return [AllowAny()]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        contact = serializer.save()
+
+        # Telegramga yuborish
+        send_telegram_message(
+            full_name=contact.full_name,
+            email=contact.email,
+            theme=contact.theme,
+            message=contact.message,
+            created_date=contact.created_date
+        )
+
+        return Response(serializer.data, status=201)
+
+    @action(detail=True, methods=['patch'], url_path='mark-read')
+    def mark_as_read(self, request, pk=None):
+        msg = self.get_object()
+        msg.is_read = True
+        msg.save()
+        serializer = self.get_serializer(msg)
+        return Response(serializer.data)
+    
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def applications_by_category(request, category_id):
+    apps = Application.objects.filter(category_id=category_id).order_by('-created_date')
+    serializer = ApplicationSerializer(apps, many=True)
+    return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def applications_by_subcategory(request, subcategory_id):
+    apps = Application.objects.filter(subcategory_id=subcategory_id).order_by('-created_date')
+    serializer = ApplicationSerializer(apps, many=True)
+    return Response(serializer.data)
+
+# ===============================================
+# FILTER APPLICATIONS
+# ===============================================
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def filter_applications(request):
+    category_id = request.GET.get('category')
+    subcategory_id = request.GET.get('subcategory')
+
+    queryset = Application.objects.all()
+
+    if category_id:
+        queryset = queryset.filter(category_id=category_id)
+    if subcategory_id:
+        queryset = queryset.filter(subcategory_id=subcategory_id)
+
+    serializer = ApplicationSerializer(queryset, many=True)
+    return Response(serializer.data)

@@ -1,9 +1,21 @@
 from rest_framework import serializers
-from .models import About, Blog, Category, Subcategory, Application, ApplicationImage, Profile
+from .models import About, Blog, Category, Subcategory, Application, ApplicationImage, Profile, Banner, ContactUs
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 
+# ---------------- Banner ----------------
+class BannerSerializer(serializers.ModelSerializer):
+    image = serializers.ImageField(required=False)
+    image_url = serializers.URLField(read_only=True)
+
+    class Meta:
+        model = Banner
+        fields = ["id", "image", "image_url", "created_date", "is_active"]
+        read_only_fields = ["id", "image_url", "created_date"]
+        
+    def get_list_of_images(self, obj):
+        return [obj.image_url] if obj.image_url else []
 
 class AboutSerializer(serializers.ModelSerializer):
     main_image = serializers.ImageField(required=False)
@@ -28,26 +40,40 @@ class BlogSerializer(serializers.ModelSerializer):
         return obj.hit_count.hits if hasattr(obj, "hit_count") else 0
 
 
+# ---------------- CategorySerializer (faqat title list) ----------------
 class CategorySerializer(serializers.ModelSerializer):
     image = serializers.ImageField(required=False)
     image_url = serializers.URLField(read_only=True)
+    # Faqat subcategory title'larini list sifatida qaytarish
+    subcategories = serializers.SerializerMethodField()
 
     class Meta:
         model = Category
         fields = "__all__"
+        read_only_fields = ("subcategories",)
+
+    def get_subcategories(self, obj):
+        """Categoryga tegishli subcategorylarning faqat title'larini list sifatida qaytarish"""
+        # values_list('title', flat=True) orqali faqat title'lar listini olamiz
+        return list(Subcategory.objects.filter(categories=obj).values_list('title', flat=True))
 
 
+# ---------------- SubcategorySerializer ----------------
 class SubcategorySerializer(serializers.ModelSerializer):
-    categories = serializers.PrimaryKeyRelatedField(
-        many=True, read_only=True
-    )
-
+    # categories ni faqat title'larini list sifatida qaytarish
+    categories_titles = serializers.SerializerMethodField()
+    
     class Meta:
         model = Subcategory
         fields = "__all__"
         read_only_fields = ("slug",)
 
+    def get_categories_titles(self, obj):
+        """Har bir subcategoryga tegishli categorylarning title'larini qaytarish"""
+        return [category.title for category in obj.categories.all()]
 
+
+# ---------------- ApplicationImage ----------------
 class ApplicationImageSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(required=False)
     image_url = serializers.URLField(read_only=True)
@@ -58,27 +84,32 @@ class ApplicationImageSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "image_url"]
 
 
+# ---------------- Application ----------------
 class ApplicationSerializer(serializers.ModelSerializer):
     images = ApplicationImageSerializer(many=True, read_only=True)
-    category_title = serializers.SerializerMethodField()
-    subcategory_title = serializers.SerializerMethodField()
+    category = CategorySerializer(read_only=True)
+    subcategory = SubcategorySerializer(read_only=True)
+    video = serializers.FileField(required=False, allow_null=True)
+    video_url = serializers.URLField(read_only=True)
+    document = serializers.FileField(required=False, allow_null=True)
+    document_url = serializers.URLField(read_only=True)
 
     class Meta:
         model = Application
         fields = [
             "id", "slug", "full_name", "phone_number", "birth_date",
             "passport_number", "region", "location", 
-            "category", "subcategory",  # Bu hali ham foreign key ID sifatida qoladi
-            "category_title", "subcategory_title",  # Yangi fieldlar
-            "description", "status", "denied_reason", "images"
+            "category", "subcategory",
+            "description", "video", "video_url", "document", "document_url",
+            "status", "denied_reason", "images", "created_date"
         ]
-        read_only_fields = ("slug", "category_title", "subcategory_title")
+        read_only_fields = ("slug", "category", "subcategory", "video_url", "document_url", "created_date")
 
-    def get_category_title(self, obj):
-        return obj.category.title if obj.category else None
+    def get_category(self, obj):
+        return obj.category
 
-    def get_subcategory_title(self, obj):
-        return obj.subcategory.title if obj.subcategory else None
+    def get_subcategory(self, obj):
+        return obj.subcategory
 
     def validate(self, data):
         category = data.get("category") or getattr(self.instance, "category", None)
@@ -91,6 +122,11 @@ class ApplicationSerializer(serializers.ModelSerializer):
                  f"kategoriyasiga tegishli. Siz esa '{category}' kategoriyasini tanladingiz."}
             )
         return data
+    
+    def create(self, validated_data):
+        # Remove image field if present (it will be handled in save method)
+        validated_data.pop('image', None)
+        return super().create(validated_data)
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -185,3 +221,10 @@ class LoginResponseSerializer(serializers.Serializer):
     refresh = serializers.CharField()
     access = serializers.CharField()
     user = UserSerializer() 
+    
+# ---------------- ContactUs ----------------
+class ContactUsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContactUs
+        fields = ["id", "full_name", "email", "theme", "message", "created_date", "is_read"]
+        read_only_fields = ["id", "created_date"]
