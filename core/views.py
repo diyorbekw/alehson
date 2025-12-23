@@ -335,7 +335,16 @@ class ApplicationViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="add-image")
     @swagger_auto_schema(
         operation_description="Arizaga rasm qo'shish (multipart/form-data)",
-        request_body=ApplicationImageSerializer,
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                "image": openapi.Schema(
+                    type=openapi.TYPE_FILE,
+                    description="Rasm fayli"
+                )
+            },
+            required=["image"]
+        ),
         responses={201: ApplicationImageSerializer}
     )
     def add_image(self, request, slug=None):
@@ -399,7 +408,20 @@ class ApplicationImageViewSet(viewsets.ModelViewSet):
 
     @swagger_auto_schema(
         operation_description="Ariza rasmini yaratish (multipart/form-data)",
-        request_body=ApplicationImageSerializer,
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                "application": openapi.Schema(
+                    type=openapi.TYPE_INTEGER,
+                    description="Ariza ID"
+                ),
+                "image": openapi.Schema(
+                    type=openapi.TYPE_FILE,
+                    description="Rasm fayli"
+                )
+            },
+            required=["application", "image"]
+        ),
         responses={201: ApplicationImageSerializer}
     )
     def create(self, request, *args, **kwargs):

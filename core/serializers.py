@@ -16,11 +16,6 @@ class BannerSerializer(serializers.ModelSerializer):
         fields = ["id", "image", "image_url", "created_date", "is_active"]
         read_only_fields = ["id", "image_url", "created_date"]
 
-    def create(self, validated_data):
-        image = validated_data.pop('image')
-        banner = Banner.objects.create(image=image, **validated_data)
-        return banner
-
 # ===============================================
 # ABOUT
 # ===============================================
@@ -49,11 +44,6 @@ class BlogSerializer(serializers.ModelSerializer):
     def get_views(self, obj):
         return obj.hit_count.hits if hasattr(obj, "hit_count") else 0
 
-    def create(self, validated_data):
-        image = validated_data.pop('image')
-        blog = Blog.objects.create(image=image, **validated_data)
-        return blog
-
 # ===============================================
 # CATEGORY
 # ===============================================
@@ -69,11 +59,6 @@ class CategorySerializer(serializers.ModelSerializer):
 
     def get_subcategories(self, obj):
         return list(Subcategory.objects.filter(categories=obj).values_list('title', flat=True))
-
-    def create(self, validated_data):
-        image = validated_data.pop('image')
-        category = Category.objects.create(image=image, **validated_data)
-        return category
 
 # ===============================================
 # SUBCATEGORY
@@ -101,13 +86,8 @@ class ApplicationImageSerializer(serializers.ModelSerializer):
         fields = ["id", "application", "image", "image_url"]
         read_only_fields = ["id", "image_url"]
 
-    def create(self, validated_data):
-        image = validated_data.pop('image')
-        app_image = ApplicationImage.objects.create(image=image, **validated_data)
-        return app_image
-
 # ===============================================
-# APPLICATION SERIALIZERS
+# APPLICATION CREATE SERIALIZER (MULTIPART UCHUN)
 # ===============================================
 class ApplicationCreateSerializer(serializers.ModelSerializer):
     category = serializers.PrimaryKeyRelatedField(
@@ -123,9 +103,10 @@ class ApplicationCreateSerializer(serializers.ModelSerializer):
     
     # Bir nechta rasm yuklash uchun
     images = serializers.ListField(
-        child=serializers.ImageField(),
+        child=serializers.ImageField(allow_empty_file=False, use_url=False),
         required=False,
-        write_only=True
+        write_only=True,
+        allow_empty=True
     )
 
     class Meta:
@@ -173,7 +154,9 @@ class ApplicationCreateSerializer(serializers.ModelSerializer):
             
         return application
 
-
+# ===============================================
+# APPLICATION SERIALIZER
+# ===============================================
 class ApplicationSerializer(serializers.ModelSerializer):
     images = ApplicationImageSerializer(many=True, read_only=True)
     category = CategorySerializer(read_only=True)
@@ -208,23 +191,6 @@ class ApplicationSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ("slug", "video_url", "document_url", "created_date", 
                           "status", "denied_reason")
-
-    def update(self, instance, validated_data):
-        # Video va hujjatni yangilash
-        video = validated_data.pop('video', None)
-        document = validated_data.pop('document', None)
-        
-        if video is not None:
-            instance.video = video
-        if document is not None:
-            instance.document = document
-            
-        # Qolgan fieldlarni yangilash
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-            
-        instance.save()
-        return instance
 
 # ===============================================
 # USER & PROFILE
