@@ -34,7 +34,7 @@ schema_view = get_schema_view(
    openapi.Info(
       title="Alehson API",
       default_version='v1',
-      description="Alehson platformasi API",
+      description="Alehson platformasi API - File upload (multipart/form-data) qo'llab-quvvatlanadi",
       terms_of_service="https://www.google.com/policies/terms/",
       contact=openapi.Contact(email="contact@alehson.uz"),
       license=openapi.License(name="BSD License"),

@@ -280,7 +280,8 @@ class ApplicationImage(models.Model):
     )
     image = models.ImageField(upload_to="temp/")
     image_url = models.URLField(max_length=500, blank=True)
-
+    created_date = models.DateTimeField(auto_now_add=True)
+    
     def save(self, *args, **kwargs):
         if self.image and not self.image_url:
             try:

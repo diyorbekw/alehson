@@ -23,10 +23,12 @@ from drf_yasg import openapi
 
 from .models import About, Blog, Category, Subcategory, Application, ApplicationImage, Profile, Banner, ContactUs
 from .serializers import (
-    AboutSerializer, BlogSerializer, CategorySerializer,
-    SubcategorySerializer, ApplicationSerializer, ApplicationCreateSerializer,
-    ApplicationImageSerializer, RegisterSerializer, LoginSerializer, 
-    ProfileSerializer, UserSerializer, BannerSerializer, ContactUsSerializer
+    AboutSerializer, BlogSerializer, BlogCreateSerializer,
+    CategorySerializer, SubcategorySerializer, ApplicationSerializer, 
+    ApplicationCreateSerializer, ApplicationCreateSerializerWithFiles,
+    ApplicationUpdateSerializer, ApplicationImageSerializer, RegisterSerializer, 
+    LoginSerializer, ProfileSerializer, UserSerializer, BannerSerializer, 
+    ContactUsSerializer
 )
 
 from hitcount.models import HitCount
@@ -34,6 +36,9 @@ from hitcount.views import HitCountMixin as HCViewMixin
 from rest_framework import filters
 from django_filters.rest_framework import DjangoFilterBackend
 import requests
+
+from django.db import models
+
 
 # ===============================================
 # TELEGRAM NOTIFICATION
@@ -59,6 +64,7 @@ def send_telegram_message(full_name, email, theme, message, created_date):
         requests.post(url, params=params, timeout=5)
     except Exception as e:
         print("Telegram error:", e)
+
 
 # ===============================================
 # GOOGLE AUTH
@@ -123,6 +129,7 @@ def dashboard(request):
 def get_csrf_token(request):
     return JsonResponse({"csrfToken": get_token(request)})
 
+
 # ===============================================
 # ABOUT VIEW
 # ===============================================
@@ -157,6 +164,7 @@ class AboutAPIView(APIView):
             return Response(serializer.data)
         return Response(serializer.errors, status=400)
 
+
 # ===============================================
 # BANNER VIEWSET
 # ===============================================
@@ -173,10 +181,36 @@ class BannerViewSet(viewsets.ModelViewSet):
     @swagger_auto_schema(
         operation_description="Banner yaratish (multipart/form-data)",
         request_body=BannerSerializer,
-        responses={201: BannerSerializer}
+        responses={201: BannerSerializer},
+        manual_parameters=[
+            openapi.Parameter(
+                'image',
+                openapi.IN_FORM,
+                description="Banner rasmi",
+                type=openapi.TYPE_FILE,
+                required=True
+            ),
+        ]
     )
     def create(self, request, *args, **kwargs):
         return super().create(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_description="Banner yangilash (multipart/form-data)",
+        request_body=BannerSerializer,
+        responses={200: BannerSerializer},
+        manual_parameters=[
+            openapi.Parameter(
+                'image',
+                openapi.IN_FORM,
+                description="Banner rasmi",
+                type=openapi.TYPE_FILE,
+                required=False
+            ),
+        ]
+    )
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
 
     @action(detail=False, methods=['get'], url_path='active')
     @swagger_auto_schema(
@@ -188,12 +222,12 @@ class BannerViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(banners, many=True)
         return Response(serializer.data)
 
+
 # ===============================================
 # BLOG VIEWSET
 # ===============================================
 class BlogViewSet(viewsets.ModelViewSet):
     queryset = Blog.objects.all().order_by("-created_date")
-    serializer_class = BlogSerializer
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     lookup_field = "slug"
     
@@ -201,11 +235,25 @@ class BlogViewSet(viewsets.ModelViewSet):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsAdminUser()]
         return [AllowAny()]
+    
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return BlogCreateSerializer
+        return BlogSerializer
 
     @swagger_auto_schema(
         operation_description="Blog yaratish (multipart/form-data)",
-        request_body=BlogSerializer,
-        responses={201: BlogSerializer}
+        request_body=BlogCreateSerializer,
+        responses={201: BlogSerializer},
+        manual_parameters=[
+            openapi.Parameter(
+                'image',
+                openapi.IN_FORM,
+                description="Blog rasmi",
+                type=openapi.TYPE_FILE,
+                required=False
+            ),
+        ]
     )
     def create(self, request, *args, **kwargs):
         return super().create(request, *args, **kwargs)
@@ -215,10 +263,30 @@ class BlogViewSet(viewsets.ModelViewSet):
         slug = slugify(title)
         serializer.save(slug=slug)
 
+    @swagger_auto_schema(
+        operation_description="Blog yangilash (multipart/form-data)",
+        request_body=BlogSerializer,
+        responses={200: BlogSerializer},
+        manual_parameters=[
+            openapi.Parameter(
+                'image',
+                openapi.IN_FORM,
+                description="Blog rasmi",
+                type=openapi.TYPE_FILE,
+                required=False
+            ),
+        ]
+    )
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
     def perform_update(self, serializer):
         title = serializer.validated_data.get("title")
-        slug = slugify(title)
-        serializer.save(slug=slug)
+        if title:
+            slug = slugify(title)
+            serializer.save(slug=slug)
+        else:
+            serializer.save()
 
     @swagger_auto_schema(
         operation_description="Blogni olish va view count oshirish",
@@ -230,6 +298,7 @@ class BlogViewSet(viewsets.ModelViewSet):
         HCViewMixin.hit_count(request, hit_count)
         serializer = self.get_serializer(blog)
         return Response(serializer.data)
+
 
 # ===============================================
 # CATEGORY VIEWSET
@@ -247,10 +316,37 @@ class CategoryViewSet(viewsets.ModelViewSet):
     @swagger_auto_schema(
         operation_description="Category yaratish (multipart/form-data)",
         request_body=CategorySerializer,
-        responses={201: CategorySerializer}
+        responses={201: CategorySerializer},
+        manual_parameters=[
+            openapi.Parameter(
+                'image',
+                openapi.IN_FORM,
+                description="Kategoriya rasmi",
+                type=openapi.TYPE_FILE,
+                required=False
+            ),
+        ]
     )
     def create(self, request, *args, **kwargs):
         return super().create(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_description="Category yangilash (multipart/form-data)",
+        request_body=CategorySerializer,
+        responses={200: CategorySerializer},
+        manual_parameters=[
+            openapi.Parameter(
+                'image',
+                openapi.IN_FORM,
+                description="Kategoriya rasmi",
+                type=openapi.TYPE_FILE,
+                required=False
+            ),
+        ]
+    )
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
 
 # ===============================================
 # SUBCATEGORY VIEWSET
@@ -273,28 +369,69 @@ class SubcategoryViewSet(viewsets.ModelViewSet):
         slug = slugify(serializer.validated_data.get("title"))
         serializer.save(slug=slug)
 
+
 # ===============================================
 # APPLICATION VIEWSET
 # ===============================================
 class ApplicationViewSet(viewsets.ModelViewSet):
     queryset = Application.objects.all().order_by("-created_date")
-    serializer_class = ApplicationSerializer
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     lookup_field = "slug"
     permission_classes = [AllowAny]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['category', 'subcategory', 'status', 'region']
     search_fields = ['full_name', 'phone_number', 'passport_number']
-
+    
     def get_serializer_class(self):
         if self.action == 'create':
-            return ApplicationCreateSerializer
+            return ApplicationCreateSerializerWithFiles
+        elif self.action in ['update', 'partial_update']:
+            return ApplicationUpdateSerializer
         return ApplicationSerializer
 
     @swagger_auto_schema(
-        operation_description="Ariza yaratish (multipart/form-data)",
-        request_body=ApplicationCreateSerializer,
-        responses={201: ApplicationSerializer}
+        operation_description="Ariza yaratish (multipart/form-data) - video, document va images bilan",
+        request_body=ApplicationCreateSerializerWithFiles,
+        responses={201: ApplicationSerializer},
+        manual_parameters=[
+            openapi.Parameter(
+                'passport_photo',
+                openapi.IN_FORM,
+                description="Pasport rasm",
+                type=openapi.TYPE_FILE,
+                required=False
+            ),
+            openapi.Parameter(
+                'passport_scan',
+                openapi.IN_FORM,
+                description="Pasport skan",
+                type=openapi.TYPE_FILE,
+                required=False
+            ),
+            openapi.Parameter(
+                'video',
+                openapi.IN_FORM,
+                description="Video fayl",
+                type=openapi.TYPE_FILE,
+                required=False
+            ),
+            openapi.Parameter(
+                'document',
+                openapi.IN_FORM,
+                description="Hujjat fayl",
+                type=openapi.TYPE_FILE,
+                required=False
+            ),
+            openapi.Parameter(
+                'images[]',
+                openapi.IN_FORM,
+                description="Qo'shimcha rasmlar (multiple)",
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Items(type=openapi.TYPE_FILE),
+                required=False,
+                collection_format='multi'
+            ),
+        ]
     )
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -304,6 +441,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         slug = slugify(full_name)
         counter = 1
         new_slug = slug
+        
         while Application.objects.filter(slug=new_slug).exists():
             new_slug = f"{slug}-{counter}"
             counter += 1
@@ -313,8 +451,38 @@ class ApplicationViewSet(viewsets.ModelViewSet):
 
     @swagger_auto_schema(
         operation_description="Ariza yangilash (multipart/form-data)",
-        request_body=ApplicationSerializer,
-        responses={200: ApplicationSerializer}
+        request_body=ApplicationUpdateSerializer,
+        responses={200: ApplicationSerializer},
+        manual_parameters=[
+            openapi.Parameter(
+                'passport_photo',
+                openapi.IN_FORM,
+                description="Pasport rasm",
+                type=openapi.TYPE_FILE,
+                required=False
+            ),
+            openapi.Parameter(
+                'passport_scan',
+                openapi.IN_FORM,
+                description="Pasport skan",
+                type=openapi.TYPE_FILE,
+                required=False
+            ),
+            openapi.Parameter(
+                'video',
+                openapi.IN_FORM,
+                description="Video fayl",
+                type=openapi.TYPE_FILE,
+                required=False
+            ),
+            openapi.Parameter(
+                'document',
+                openapi.IN_FORM,
+                description="Hujjat fayl",
+                type=openapi.TYPE_FILE,
+                required=False
+            ),
+        ]
     )
     def update(self, request, *args, **kwargs):
         return super().update(request, *args, **kwargs)
@@ -345,7 +513,16 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             },
             required=["image"]
         ),
-        responses={201: ApplicationImageSerializer}
+        responses={201: ApplicationImageSerializer},
+        manual_parameters=[
+            openapi.Parameter(
+                'image',
+                openapi.IN_FORM,
+                description="Rasm fayli",
+                type=openapi.TYPE_FILE,
+                required=True
+            ),
+        ]
     )
     def add_image(self, request, slug=None):
         application = self.get_object()
@@ -392,7 +569,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             "status": application.status,
             "denied_reason": application.denied_reason
         })
-
+        
 # ===============================================
 # APPLICATION IMAGE VIEWSET
 # ===============================================
@@ -422,10 +599,20 @@ class ApplicationImageViewSet(viewsets.ModelViewSet):
             },
             required=["application", "image"]
         ),
-        responses={201: ApplicationImageSerializer}
+        responses={201: ApplicationImageSerializer},
+        manual_parameters=[
+            openapi.Parameter(
+                'image',
+                openapi.IN_FORM,
+                description="Rasm fayli",
+                type=openapi.TYPE_FILE,
+                required=True
+            ),
+        ]
     )
     def create(self, request, *args, **kwargs):
         return super().create(request, *args, **kwargs)
+
 
 # ===============================================
 # AUTH VIEWS
@@ -534,9 +721,18 @@ class ProfileAPIView(APIView):
             return Response({"error": "Profil topilmadi"}, status=404)
 
     @swagger_auto_schema(
-        operation_description="Profil ma'lumotlarini yangilash",
+        operation_description="Profil ma'lumotlarini yangilash (multipart/form-data)",
         request_body=ProfileSerializer,
-        responses={200: ProfileSerializer, 400: "Xatolik"}
+        responses={200: ProfileSerializer, 400: "Xatolik"},
+        manual_parameters=[
+            openapi.Parameter(
+                'profile_image',
+                openapi.IN_FORM,
+                description="Profil rasmi",
+                type=openapi.TYPE_FILE,
+                required=False
+            ),
+        ]
     )
     def put(self, request):
         try:
@@ -581,6 +777,7 @@ class TestAuthView(APIView):
             }
         })
 
+
 # ===============================================
 # STATISTICS VIEW
 # ===============================================
@@ -595,10 +792,14 @@ class StatisticsAPIView(APIView):
                 "total_applications": openapi.Schema(type=openapi.TYPE_INTEGER, description="Jami arizalar soni"),
                 "accepted_applications": openapi.Schema(type=openapi.TYPE_INTEGER, description="Qabul qilingan arizalar"),
                 "denied_applications": openapi.Schema(type=openapi.TYPE_INTEGER, description="Rad etilgan arizalar"),
+                "pending_applications": openapi.Schema(type=openapi.TYPE_INTEGER, description="Ko'rib chiqilayotgan arizalar"),
                 "total_users": openapi.Schema(type=openapi.TYPE_INTEGER, description="Jami foydalanuvchilar"),
                 "total_blogs": openapi.Schema(type=openapi.TYPE_INTEGER, description="Jami bloglar"),
                 "total_categories": openapi.Schema(type=openapi.TYPE_INTEGER, description="Jami kategoriyalar"),
                 "total_subcategories": openapi.Schema(type=openapi.TYPE_INTEGER, description="Jami subkategoriyalar"),
+                "total_banners": openapi.Schema(type=openapi.TYPE_INTEGER, description="Jami bannerlar"),
+                "total_contacts": openapi.Schema(type=openapi.TYPE_INTEGER, description="Jami contact xabarlar"),
+                "unread_contacts": openapi.Schema(type=openapi.TYPE_INTEGER, description="O'qilmagan contact xabarlar"),
             }
         )}
     )
@@ -607,12 +808,17 @@ class StatisticsAPIView(APIView):
             "total_applications": Application.objects.count(),
             "accepted_applications": Application.objects.filter(status="accepted").count(),
             "denied_applications": Application.objects.filter(status="denied").count(),
+            "pending_applications": Application.objects.filter(status="pending").count(),
             "total_users": User.objects.count(),
             "total_blogs": Blog.objects.count(),
             "total_categories": Category.objects.count(),
             "total_subcategories": Subcategory.objects.count(),
+            "total_banners": Banner.objects.count(),
+            "total_contacts": ContactUs.objects.count(),
+            "unread_contacts": ContactUs.objects.filter(is_read=False).count(),
         }
         return Response(data)
+
 
 # ===============================================
 # CONTACT US VIEWSET
@@ -660,6 +866,7 @@ class ContactUsViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(msg)
         return Response(serializer.data)
 
+
 # ===============================================
 # FILTER VIEWS
 # ===============================================
@@ -704,12 +911,34 @@ def applications_by_subcategory(request, subcategory_id):
             description="Subkategoriya ID",
             type=openapi.TYPE_INTEGER
         ),
+        openapi.Parameter(
+            'status',
+            openapi.IN_QUERY,
+            description="Status",
+            type=openapi.TYPE_STRING,
+            enum=['pending', 'accepted', 'denied']
+        ),
+        openapi.Parameter(
+            'region',
+            openapi.IN_QUERY,
+            description="Viloyat",
+            type=openapi.TYPE_STRING
+        ),
+        openapi.Parameter(
+            'search',
+            openapi.IN_QUERY,
+            description="Qidiruv (Ism, telefon, passport)",
+            type=openapi.TYPE_STRING
+        ),
     ],
     responses={200: ApplicationSerializer(many=True)}
 )
 def filter_applications(request):
     category_id = request.GET.get('category')
     subcategory_id = request.GET.get('subcategory')
+    status = request.GET.get('status')
+    region = request.GET.get('region')
+    search = request.GET.get('search')
 
     queryset = Application.objects.all()
 
@@ -717,6 +946,16 @@ def filter_applications(request):
         queryset = queryset.filter(category_id=category_id)
     if subcategory_id:
         queryset = queryset.filter(subcategory_id=subcategory_id)
+    if status:
+        queryset = queryset.filter(status=status)
+    if region:
+        queryset = queryset.filter(region=region)
+    if search:
+        queryset = queryset.filter(
+            models.Q(full_name__icontains=search) |
+            models.Q(phone_number__icontains=search) |
+            models.Q(passport_number__icontains=search)
+        )
 
     serializer = ApplicationSerializer(queryset, many=True)
     return Response(serializer.data)
