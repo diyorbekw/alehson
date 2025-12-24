@@ -14,6 +14,7 @@ ALLOWED_HOSTS = [
     "navksz.uz",
     "localhost",
     "127.0.0.1",
+    "alehson-site-client.vercel.app"
 ]
 
 # ---------------- Apps ----------------
@@ -182,6 +183,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:8000",
     "https://alehson.sifatdev.uz",
     "https://api.alehson.uz",
+    "https://alehson-site-client.vercel.app"
 ]
 
 CSRF_TRUSTED_ORIGINS = [
@@ -190,6 +192,7 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3001",
     "http://127.0.0.1:3001",
     "https://api.alehson.uz",
+    "https://alehson-site-client.vercel.app",
 ]
 
 SESSION_COOKIE_SAMESITE = "Lax"

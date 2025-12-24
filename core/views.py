@@ -574,7 +574,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
 # APPLICATION IMAGE VIEWSET
 # ===============================================
 class ApplicationImageViewSet(viewsets.ModelViewSet):
-    queryset = ApplicationImage.objects.all()
+    queryset = ApplicationImage.objects.all().order_by("-created_date")
     serializer_class = ApplicationImageSerializer
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     

@@ -111,7 +111,7 @@ class SubcategorySerializer(serializers.ModelSerializer):
 class ApplicationImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ApplicationImage
-        fields = ['id', 'image', 'created_date']
+        fields = ['id', 'image', 'created_date', 'application']
         read_only_fields = ['created_date']
 
 
