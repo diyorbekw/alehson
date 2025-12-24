@@ -234,6 +234,7 @@ SWAGGER_SETTINGS = {
     'DOC_EXPANSION': 'list',
     'DEFAULT_MODEL_RENDERING': 'example',
     'DEFAULT_MODEL_DEPTH': 2,
+    'DEFAULT_API_URL': "https://api.alehson.uz"
 }
 
 # ---------------- Production SSL ----------------
