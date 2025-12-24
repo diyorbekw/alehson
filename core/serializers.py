@@ -148,15 +148,14 @@ class ApplicationCreateSerializer(serializers.ModelSerializer):
         write_only=True,
         help_text="Rasm fayllari listi (faqat .jpg, .jpeg, .png, .gif)"
     )
-    video_url = serializers.URLField(required=False, allow_blank=True, allow_null=True)
-    document_url = serializers.URLField(required=False, allow_blank=True, allow_null=True)
+
     
     class Meta:
         model = Application
         fields = [
             'full_name', 'phone_number', 'birth_date', 'passport_number',
             'region', 'location', 'category', 'subcategory', 'description',
-            'video_url', 'document_url', 'images'
+            'video', 'document', 'images'
         ]
         read_only_fields = ['slug', 'status', 'denied_reason', 'created_date']
         ref_name = 'CoreApplicationCreateSerializer'
