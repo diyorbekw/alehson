@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>John Doe - Backend Developer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #ffffff;
+            color: #1a1a1a;
+            line-height: 1.6;
+        }
+
+        /* Navbar */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.05);
+            z-index: 1000;
+            padding: 1.2rem 0;
+        }
+
+        nav .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        nav .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #6366f1;
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+            gap: 2rem;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: #4a4a4a;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        nav a:hover {
+            color: #6366f1;
+        }
+
+        /* Sections */
+        section {
+            min-height: 100vh;
+            padding: 6rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        /* Home Section */
+        #home {
+            background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);
+        }
+
+        .hero-content {
+            text-align: center;
+            opacity: 0;
+            animation: fadeIn 1s forwards;
+        }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+            }
+        }
+
+        .hero-content h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: #1a1a1a;
+        }
+
+        .hero-content h2 {
+            font-size: 1.8rem;
+            color: #6366f1;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .hero-content p {
+            font-size: 1.2rem;
+            color: #6a6a6a;
+            margin-bottom: 2.5rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 1rem 2.5rem;
+            background: #6366f1;
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn:hover {
+            background: #4f46e5;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        /* About Section */
+        #about {
+            background: #ffffff;
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-align: center;
+            color: #1a1a1a;
+        }
+
+        .section-subtitle {
+            text-align: center;
+            color: #6a6a6a;
+            margin-bottom: 3rem;
+            font-size: 1.1rem;
+        }
+
+        .about-content {
+            max-width: 800px;
+            margin: 0 auto;
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: #4a4a4a;
+        }
+
+        /* Services Section */
+        #services {
+            background: #f8f9ff;
+        }
+
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .service-card {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+            transition: all 0.3s;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        .service-card.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .service-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 8px 30px rgba(99, 102, 241, 0.15);
+        }
+
+        .service-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #6366f1;
+        }
+
+        .service-card p {
+            color: #6a6a6a;
+            line-height: 1.7;
+        }
+
+        /* Blog Section */
+        #blog {
+            background: #ffffff;
+        }
+
+        .blog-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 2.5rem;
+            margin-top: 3rem;
+        }
+
+        .blog-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+            transition: all 0.3s;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        .blog-card.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .blog-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 8px 30px rgba(99, 102, 241, 0.15);
+        }
+
+        .blog-content {
+            padding: 2rem;
+        }
+
+        .blog-card h3 {
+            font-size: 1.4rem;
+            margin-bottom: 1rem;
+            color: #1a1a1a;
+        }
+
+        .blog-card p {
+            color: #6a6a6a;
+            margin-bottom: 1.5rem;
+            line-height: 1.7;
+        }
+
+        .blog-link {
+            color: #6366f1;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s;
+        }
+
+        .blog-link:hover {
+            color: #4f46e5;
+        }
+
+        /* Contact Section */
+        #contact {
+            background: #f8f9ff;
+        }
+
+        .contact-container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .contact-form {
+            background: white;
+            padding: 3rem;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-family: 'Inter', sans-serif;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #6366f1;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 150px;
+        }
+
+        .error {
+            color: #ef4444;
+            font-size: 0.9rem;
+            margin-top: 0.3rem;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 1.2rem;
+            background: #6366f1;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .submit-btn:hover {
+            background: #4f46e5;
+            transform: translateY(-2px);
+        }
+
+        .social-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .social-links a {
+            color: #6a6a6a;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s;
+        }
+
+        .social-links a:hover {
+            color: #6366f1;
+        }
+
+        .success-message {
+            background: #10b981;
+            color: white;
+            padding: 1rem;
+            border-radius: 10px;
+            margin-top: 1rem;
+            text-align: center;
+            display: none;
+        }
+
+        /* Mobile Menu */
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #1a1a1a;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero-content h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero-content h2 {
+                font-size: 1.4rem;
+            }
+
+            nav ul {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: white;
+                flex-direction: column;
+                padding: 2rem;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            }
+
+            nav ul.active {
+                display: flex;
+            }
+
+            .mobile-menu-btn {
+                display: block;
+            }
+
+            section {
+                padding: 4rem 1.5rem;
+            }
+
+            .contact-form {
+                padding: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="container">
+            <div class="logo">JD</div>
+            <button class="mobile-menu-btn" onclick="toggleMenu()">☰</button>
+            <ul id="navMenu">
+                <li><a href="#home">Home</a></li>
+                <li><a href="#about">About</a></li>
+                <li><a href="#services">Services</a></li>
+                <li><a href="#blog">Blog</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <section id="home">
+        <div class="container">
+            <div class="hero-content">
+                <h1>John Doe</h1>
+                <h2>Backend Developer</h2>
+                <p>Building scalable and secure web applications with Python & Django</p>
+                <a href="#services" class="btn">View My Work</a>
+            </div>
+        </div>
+    </section>
+
+    <section id="about">
+        <div class="container">
+            <h2 class="section-title">About Me</h2>
+            <p class="section-subtitle">Passionate about creating robust backend solutions</p>
+            <div class="about-content">
+                <p>I'm a dedicated Backend Developer with extensive experience in building scalable web applications and RESTful APIs. My expertise lies in Python and Django, where I've developed numerous high-performance systems that handle complex business logic and large-scale data processing.</p>
+                <p style="margin-top: 1.5rem;">I specialize in designing and optimizing database architectures, implementing secure authentication systems, and creating efficient API endpoints. With a strong foundation in backend technologies, I focus on writing clean, maintainable code that follows best practices and industry standards.</p>
+                <p style="margin-top: 1.5rem;">My approach combines technical excellence with practical problem-solving, ensuring that every project delivers real value to users and stakeholders.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="services">
+        <div class="container">
+            <h2 class="section-title">Services</h2>
+            <p class="section-subtitle">What I can do for you</p>
+            <div class="services-grid">
+                <div class="service-card">
+                    <h3>Backend Development</h3>
+                    <p>Crafting robust server-side applications with Python and Django, implementing business logic, and ensuring optimal performance and security.</p>
+                </div>
+                <div class="service-card">
+                    <h3>REST API Development</h3>
+                    <p>Designing and building RESTful APIs that are scalable, well-documented, and easy to integrate with various frontend applications.</p>
+                </div>
+                <div class="service-card">
+                    <h3>Django Web Applications</h3>
+                    <p>Developing full-featured web applications using Django framework, leveraging its powerful ORM and built-in security features.</p>
+                </div>
+                <div class="service-card">
+                    <h3>Database Design & Optimization</h3>
+                    <p>Creating efficient database schemas, writing optimized queries, and implementing caching strategies for improved performance.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="blog">
+        <div class="container">
+            <h2 class="section-title">Blog</h2>
+            <p class="section-subtitle">Thoughts and insights on backend development</p>
+            <div class="blog-grid">
+                <div class="blog-card">
+                    <div class="blog-content">
+                        <h3>Optimizing Django ORM Queries</h3>
+                        <p>Learn how to identify and fix N+1 query problems, use select_related and prefetch_related effectively, and boost your Django application's performance.</p>
+                        <a href="#" class="blog-link">Read more →</a>
+                    </div>
+                </div>
+                <div class="blog-card">
+                    <div class="blog-content">
+                        <h3>Building Secure REST APIs</h3>
+                        <p>A comprehensive guide to implementing authentication, authorization, rate limiting, and other security best practices in your API design.</p>
+                        <a href="#" class="blog-link">Read more →</a>
+                    </div>
+                </div>
+                <div class="blog-card">
+                    <div class="blog-content">
+                        <h3>Database Indexing Strategies</h3>
+                        <p>Understand when and how to use database indexes to improve query performance without sacrificing write speed or storage efficiency.</p>
+                        <a href="#" class="blog-link">Read more →</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="contact">
+        <div class="container contact-container">
+            <h2 class="section-title">Get In Touch</h2>
+            <p class="section-subtitle">Let's work together</p>
+            <form class="contact-form" id="contactForm">
+                <div class="form-group">
+                    <label for="name">Name</label>
+                    <input type="text" id="name" name="name">
+                    <span class="error" id="nameError"></span>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email">
+                    <span class="error" id="emailError"></span>
+                </div>
+                <div class="form-group">
+                    <label for="message">Message</label>
+                    <textarea id="message" name="message"></textarea>
+                    <span class="error" id="messageError"></span>
+                </div>
+                <button type="submit" class="submit-btn">Send Message</button>
+                <div class="success-message" id="successMessage">
+                    Thank you! Your message has been sent successfully.
+                </div>
+            </form>
+            <div class="social-links">
+                <a href="https://github.com" target="_blank">GitHub</a>
+                <a href="https://linkedin.com" target="_blank">LinkedIn</a>
+                <a href="mailto:john@example.com">Email</a>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        // Mobile menu toggle
+        function toggleMenu() {
+            document.getElementById('navMenu').classList.toggle('active');
+        }
+
+        // Close menu when clicking on a link
+        document.querySelectorAll('nav a').forEach(link => {
+            link.addEventListener('click', () => {
+                document.getElementById('navMenu').classList.remove('active');
+            });
+        });
+
+        // Intersection Observer for scroll animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -100px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, observerOptions);
+
+        // Observe service and blog cards
+        document.querySelectorAll('.service-card, .blog-card').forEach(card => {
+            observer.observe(card);
+        });
+
+        // Form validation
+        document.getElementById('contactForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            let isValid = true;
+            
+            // Clear previous errors
+            document.querySelectorAll('.error').forEach(error => error.textContent = '');
+            
+            // Name validation
+            const name = document.getElementById('name').value.trim();
+            if (name === '') {
+                document.getElementById('nameError').textContent = 'Name is required';
+                isValid = false;
+            }
+            
+            // Email validation
+            const email = document.getElementById('email').value.trim();
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (email === '') {
+                document.getElementById('emailError').textContent = 'Email is required';
+                isValid = false;
+            } else if (!emailRegex.test(email)) {
+                document.getElementById('emailError').textContent = 'Please enter a valid email';
+                isValid = false;
+            }
+            
+            // Message validation
+            const message = document.getElementById('message').value.trim();
+            if (message === '') {
+                document.getElementById('messageError').textContent = 'Message is required';
+                isValid = false;
+            } else if (message.length < 10) {
+                document.getElementById('messageError').textContent = 'Message must be at least 10 characters';
+                isValid = false;
+            }
+            
+            if (isValid) {
+                // Show success message
+                document.getElementById('successMessage').style.display = 'block';
+                // Reset form
+                document.getElementById('contactForm').reset();
+                // Hide success message after 5 seconds
+                setTimeout(() => {
+                    document.getElementById('successMessage').style.display = 'none';
+                }, 5000);
+            }
+        });
+    </script>
+</body>
+</html>

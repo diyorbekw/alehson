@@ -71,7 +71,7 @@ class Banner(models.Model):
         if self.image and not self.image_url:
             try:
                 self.image_url = upload_to_imgbb(self.image)
-                self.image.delete(save=False)  # PCdan o'chirib tashlaymiz
+                self.image.delete(save=False)
             except ValidationError as e:
                 raise e
         super().save(*args, **kwargs)
@@ -86,8 +86,8 @@ class Banner(models.Model):
 # ---------------- About ----------------
 class About(models.Model):
     main_title = models.CharField(max_length=255)
-    main_image = models.ImageField(upload_to="temp/")   # vaqtincha yuklanadi
-    main_image_url = models.URLField(max_length=500, blank=True)  # imgbb URL
+    main_image = models.ImageField(upload_to="temp/")
+    main_image_url = models.URLField(max_length=500, blank=True)
     hero_title = models.CharField(max_length=255)
     description = models.TextField()
 
@@ -95,7 +95,7 @@ class About(models.Model):
         if self.main_image and not self.main_image_url:
             try:
                 self.main_image_url = upload_to_imgbb(self.main_image)
-                self.main_image.delete(save=False)  # PCdan o'chirib tashlaymiz
+                self.main_image.delete(save=False)
             except ValidationError as e:
                 raise e
         super().save(*args, **kwargs)
@@ -226,7 +226,6 @@ class Application(models.Model):
     subcategory = models.ForeignKey("Subcategory", on_delete=models.CASCADE)
     description = models.TextField()
     
-    # Yangi fieldlar
     video = models.FileField(upload_to="temp/", blank=True, null=True)
     video_url = models.URLField(max_length=500, blank=True)
     document = models.FileField(upload_to="temp/", blank=True, null=True)
