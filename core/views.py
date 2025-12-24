@@ -345,14 +345,6 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         return ApplicationSerializer
 
     @swagger_auto_schema(
-        operation_description="""Ariza yaratish (multipart/form-data)
-        
-        **Eslatmalar:**
-        1. Faqat rasm fayllari yuklanishi mumkin (.jpg, .jpeg, .png, .gif)
-        2. Video va document faqat URL sifatida yuborilishi mumkin (video_url, document_url)
-        3. Har bir rasm imgbb ga avtomatik yuklanadi
-        4. images fieldi list sifatida bir nechta rasm yuklash uchun
-        """,
         request_body=ApplicationCreateSerializer,
         responses={
             201: ApplicationSerializer,
