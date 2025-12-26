@@ -14,7 +14,8 @@ ALLOWED_HOSTS = [
     "navksz.uz",
     "localhost",
     "127.0.0.1",
-    "alehson-site-client.vercel.app"
+    "alehson-site-client.vercel.app",
+    "100.42.190.208"
 ]
 
 # ---------------- Apps ----------------
