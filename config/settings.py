@@ -15,8 +15,7 @@ ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
     "alehson-site-client.vercel.app",
-    "100.42.190.208",
-    "api.uzfiesta.uz"
+    "213.199.50.65"
 ]
 
 # ---------------- Apps ----------------
