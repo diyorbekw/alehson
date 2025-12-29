@@ -1,19 +1,16 @@
-FROM python:3.11
+FROM python:3.11-slim-buster
 
-# Ishchi papka
 WORKDIR /app
 
-# Tizim paketlarini o'rnatish
-RUN apt-get update && apt-get install -y \
-    nginx \
-    && rm -rf /var/lib/apt/lists/*
-
-# Requirements.txt dan kutubxonalarni o'rnatamiz
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install gunicorn
 
-# Project fayllarini ko'chiramiz
-COPY . .
+RUN pip install -r requirements.txt
 
-EXPOSE 8000
+COPY . /app
+
+RUN python manage.py makemigrations \
+    && python manage.py migrate
+
+EXPOSE 7070
+
+CMD ["python", "manage.py", "runserver", "0.0.0.0:7070"]
