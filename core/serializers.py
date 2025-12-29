@@ -251,4 +251,4 @@ class ContactUsSerializer(serializers.ModelSerializer):
         model = ContactUs
         fields = '__all__'
         ref_name = 'CoreContactUsSerializer'
-        read_only_fields = ['is_read', 'created_date']
+        read_only_fields = ['is_read', 'created_date'] 
