@@ -7,12 +7,19 @@ from .models import About, Blog, Category, Subcategory, Application, Application
 
 # ==================== AUTH SERIALIZERS ====================
 class CustomRegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, min_length=8)
+    password = serializers.CharField(
+        write_only=True, 
+        min_length=8,
+        style={'input_type': 'password'}
+    )
     
     class Meta:
         model = User
         fields = ['email', 'password', 'first_name', 'last_name']
-        ref_name = 'CoreCustomRegisterSerializer'
+        extra_kwargs = {
+            'email': {'required': True},
+            'password': {'required': True}
+        }
     
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
@@ -32,7 +39,10 @@ class CustomRegisterSerializer(serializers.ModelSerializer):
 
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    password = serializers.CharField(write_only=True)
+    password = serializers.CharField(
+        write_only=True,
+        style={'input_type': 'password'}
+    )
     
     def validate(self, data):
         email = data.get('email')
@@ -68,7 +78,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'email', 'first_name', 'last_name', 'date_joined']
-        ref_name = 'CoreUserSerializer'
+        read_only_fields = ['id', 'date_joined']
 
 
 # ==================== MODEL SERIALIZERS ====================
@@ -76,14 +86,13 @@ class AboutSerializer(serializers.ModelSerializer):
     class Meta:
         model = About
         fields = '__all__'
-        ref_name = 'CoreAboutSerializer'
+        read_only_fields = ['created_date', 'updated_date']
 
 
 class BlogSerializer(serializers.ModelSerializer):
     class Meta:
         model = Blog
         fields = '__all__'
-        ref_name = 'CoreBlogSerializer'
         read_only_fields = ['slug', 'created_date']
 
 
@@ -91,30 +100,32 @@ class BlogCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Blog
         fields = ['title', 'description', 'content', 'region', 'image']
-        ref_name = 'CoreBlogCreateSerializer'
+        extra_kwargs = {
+            'title': {'required': True},
+            'description': {'required': True},
+            'content': {'required': True}
+        }
 
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = '__all__'
-        ref_name = 'CoreCategorySerializer'
+        read_only_fields = ['created_date']
 
 
 class SubcategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Subcategory
         fields = '__all__'
-        ref_name = 'CoreSubcategorySerializer'
-        read_only_fields = ['slug']
+        read_only_fields = ['slug', 'created_date']
 
 
 class ApplicationImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ApplicationImage
         fields = ['id', 'image', 'image_url', 'created_date', 'application']
-        read_only_fields = ['created_date']
-        ref_name = 'CoreApplicationImageSerializer'
+        read_only_fields = ['created_date', 'application']
         extra_kwargs = {
             'image': {'required': False},
             'image_url': {'required': False}
@@ -136,19 +147,49 @@ class ApplicationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Application
         fields = '__all__'
-        ref_name = 'CoreApplicationSerializer'
         read_only_fields = ['slug', 'status', 'denied_reason', 'created_date']
 
 
+# ==================== APPLICATION CREATE SERIALIZER ====================
 class ApplicationCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Application
+        fields = [
+            'full_name', 'phone_number', 'birth_date', 'passport_number',
+            'region', 'location', 'category', 'subcategory', 'description',
+        ]
+        extra_kwargs = {
+            'full_name': {'required': True},
+            'phone_number': {'required': True},
+            'birth_date': {'required': True},
+            'passport_number': {'required': True},
+            'region': {'required': True},
+            'category': {'required': True},
+            'subcategory': {'required': True}
+        }
+
+
+# ==================== APPLICATION CREATE WITH FILES SERIALIZER ====================
+class ApplicationCreateWithFilesSerializer(serializers.ModelSerializer):
+    video = serializers.FileField(
+        required=False,
+        allow_null=True,
+        help_text="Video fayl (mp4, mov, avi, etc.)"
+    )
+    document = serializers.FileField(
+        required=False,
+        allow_null=True,
+        help_text="Hujjat fayli (pdf, doc, docx, etc.)"
+    )
     images = serializers.ListField(
-        child=serializers.ImageField(),
+        child=serializers.ImageField(
+            help_text="Rasm fayli (jpg, jpeg, png, etc.)"
+        ),
         required=False,
         default=[],
         write_only=True,
-        help_text="Rasm fayllari listi (faqat .jpg, .jpeg, .png, .gif)"
+        help_text="Rasm fayllari ro'yxati"
     )
-
     
     class Meta:
         model = Application
@@ -157,8 +198,21 @@ class ApplicationCreateSerializer(serializers.ModelSerializer):
             'region', 'location', 'category', 'subcategory', 'description',
             'video', 'document', 'images'
         ]
-        read_only_fields = ['slug', 'status', 'denied_reason', 'created_date']
-        ref_name = 'CoreApplicationCreateSerializer'
+        extra_kwargs = {
+            'full_name': {'required': True},
+            'phone_number': {'required': True},
+            'birth_date': {'required': True},
+            'passport_number': {'required': True},
+            'region': {'required': True},
+            'category': {'required': True},
+            'subcategory': {'required': True}
+        }
+    
+    def to_internal_value(self, data):
+        ret = super().to_internal_value(data)
+        if 'images' not in ret:
+            ret['images'] = []
+        return ret
     
     def validate(self, data):
         category = data.get('category')
@@ -189,30 +243,29 @@ class ApplicationCreateSerializer(serializers.ModelSerializer):
         # Application yaratish
         application = Application.objects.create(**validated_data)
         
-        # Rasm fayllarini imgbb ga yuklash va saqlash
+        # Rasm fayllarini saqlash
         for image_file in images:
             if image_file:
                 ApplicationImage.objects.create(
                     application=application,
-                    image=image_file  # save() methodi imgbb ga yuklaydi
+                    image=image_file
                 )
         
         return application
 
 
 class ApplicationUpdateSerializer(serializers.ModelSerializer):
-    video_url = serializers.URLField(required=False, allow_null=True, allow_blank=True)
-    document_url = serializers.URLField(required=False, allow_null=True, allow_blank=True)
-    
     class Meta:
         model = Application
         fields = [
             'full_name', 'phone_number', 'birth_date', 'passport_number',
             'region', 'location', 'category', 'subcategory', 'description',
-            'video_url', 'document_url', 'status'
+            'status'
         ]
         read_only_fields = ['slug', 'denied_reason', 'created_date']
-        ref_name = 'CoreApplicationUpdateSerializer'
+        extra_kwargs = {
+            'status': {'required': False}
+        }
     
     def validate(self, data):
         category = data.get('category')
@@ -234,15 +287,13 @@ class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
         fields = '__all__'
-        ref_name = 'CoreProfileSerializer'
-        read_only_fields = ['user']
+        read_only_fields = ['user', 'created_date']
 
 
 class BannerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Banner
         fields = '__all__'
-        ref_name = 'CoreBannerSerializer'
         read_only_fields = ['created_date']
 
 
@@ -250,5 +301,10 @@ class ContactUsSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContactUs
         fields = '__all__'
-        ref_name = 'CoreContactUsSerializer'
-        read_only_fields = ['is_read', 'created_date'] 
+        read_only_fields = ['is_read', 'created_date']
+        extra_kwargs = {
+            'full_name': {'required': True},
+            'email': {'required': True},
+            'theme': {'required': True},
+            'message': {'required': True}
+        }

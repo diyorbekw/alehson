@@ -12,14 +12,15 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import status, viewsets, filters
-from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.generics import CreateAPIView
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from drf_yasg.utils import swagger_auto_schema
-from drf_yasg import openapi
+# drf-spectacular uchun decorators
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiTypes
+from drf_spectacular.types import OpenApiTypes
 
 from .models import About, Blog, Category, Subcategory, Application, ApplicationImage, Profile, Banner, ContactUs
 from .serializers import (
@@ -30,6 +31,7 @@ from .serializers import (
     SubcategorySerializer,
     ApplicationSerializer,
     ApplicationCreateSerializer,
+    ApplicationCreateWithFilesSerializer,
     ApplicationUpdateSerializer,
     ApplicationImageSerializer,
     CustomRegisterSerializer,
@@ -42,7 +44,6 @@ from .serializers import (
 
 from hitcount.models import HitCount
 from hitcount.views import HitCountMixin as HCViewMixin
-from rest_framework import filters
 from django_filters.rest_framework import DjangoFilterBackend
 import requests
 
@@ -78,18 +79,26 @@ def send_telegram_message(full_name, email, theme, message, created_date):
 # ===============================================
 # GOOGLE AUTH
 # ===============================================
+@extend_schema(tags=['Auth'])
 class GoogleAuthView(APIView):
     permission_classes = [AllowAny]
     
-    @swagger_auto_schema(
-        operation_description="Google orqali login qilish",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                "token": openapi.Schema(type=openapi.TYPE_STRING, description="Google ID Token"),
-            },
-            required=["token"],
-        ),
+    @extend_schema(
+        summary="Google orqali login qilish",
+        description="Google ID Token orqali tizimga kirish",
+        request={
+            'application/json': {
+                'type': 'object',
+                'properties': {
+                    'token': {'type': 'string', 'description': 'Google ID Token'}
+                },
+                'required': ['token']
+            }
+        },
+        responses={
+            200: OpenApiTypes.OBJECT,
+            400: OpenApiTypes.OBJECT
+        }
     )
     def post(self, request):
         token = request.data.get("token")
@@ -142,13 +151,15 @@ def get_csrf_token(request):
 # ===============================================
 # ABOUT VIEW
 # ===============================================
+@extend_schema(tags=['About'])
 class AboutAPIView(APIView):
-    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    parser_classes = [MultiPartParser, FormParser]
     permission_classes = [AllowAny]
 
-    @swagger_auto_schema(
-        operation_description="About ma'lumotini olish",
-        responses={200: AboutSerializer, 404: "Ma'lumot topilmadi"}
+    @extend_schema(
+        summary="About ma'lumotini olish",
+        description="Platforma haqida ma'lumotni olish",
+        responses={200: AboutSerializer, 404: OpenApiTypes.OBJECT}
     )
     def get(self, request):
         about = About.objects.first()
@@ -157,10 +168,11 @@ class AboutAPIView(APIView):
         serializer = AboutSerializer(about)
         return Response(serializer.data)
 
-    @swagger_auto_schema(
-        operation_description="About ma'lumotini yangilash",
-        request_body=AboutSerializer,
-        responses={200: AboutSerializer, 400: "Xatolik"}
+    @extend_schema(
+        summary="About ma'lumotini yangilash",
+        description="Platforma haqida ma'lumotni yangilash (admin uchun)",
+        request=AboutSerializer,
+        responses={200: AboutSerializer, 400: OpenApiTypes.OBJECT}
     )
     def put(self, request):
         about = About.objects.first()
@@ -177,34 +189,52 @@ class AboutAPIView(APIView):
 # ===============================================
 # BANNER VIEWSET
 # ===============================================
+@extend_schema_view(
+    list=extend_schema(
+        summary="Barcha bannerlarni olish",
+        description="Barcha bannerlarni olish"
+    ),
+    retrieve=extend_schema(
+        summary="Bannerni ID bo'yicha olish",
+        description="Bannerni ID bo'yicha olish"
+    ),
+    create=extend_schema(
+        summary="Yangi banner yaratish",
+        description="Yangi banner yaratish (admin uchun)",
+        request=BannerSerializer,
+        responses={201: BannerSerializer}
+    ),
+    update=extend_schema(
+        summary="Bannerni yangilash",
+        description="Bannerni yangilash (admin uchun)",
+        request=BannerSerializer,
+        responses={200: BannerSerializer}
+    ),
+    partial_update=extend_schema(
+        summary="Bannerni qisman yangilash",
+        description="Bannerni qisman yangilash (admin uchun)",
+        request=BannerSerializer,
+        responses={200: BannerSerializer}
+    ),
+    destroy=extend_schema(
+        summary="Bannerni o'chirish",
+        description="Bannerni o'chirish (admin uchun)"
+    )
+)
+@extend_schema(tags=['Banners'])
 class BannerViewSet(viewsets.ModelViewSet):
     queryset = Banner.objects.all().order_by("-created_date")
     serializer_class = BannerSerializer
-    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    parser_classes = [MultiPartParser, FormParser]
     
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsAdminUser()]
         return [AllowAny()]
 
-    @swagger_auto_schema(
-        operation_description="Banner yaratish",
-        request_body=BannerSerializer,
-        responses={201: BannerSerializer}
-    )
-    def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Banner yangilash",
-        request_body=BannerSerializer,
-        responses={200: BannerSerializer}
-    )
-    def update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Faol bannerlarni olish",
+    @extend_schema(
+        summary="Faol bannerlarni olish",
+        description="Faqat faol bannerlarni olish",
         responses={200: BannerSerializer(many=True)}
     )
     @action(detail=False, methods=['get'], url_path='active')
@@ -217,9 +247,42 @@ class BannerViewSet(viewsets.ModelViewSet):
 # ===============================================
 # BLOG VIEWSET
 # ===============================================
+@extend_schema_view(
+    list=extend_schema(
+        summary="Barcha bloglarni olish",
+        description="Barcha bloglarni olish"
+    ),
+    retrieve=extend_schema(
+        summary="Blogni slug bo'yicha olish",
+        description="Blogni slug bo'yicha olish va view count oshirish"
+    ),
+    create=extend_schema(
+        summary="Yangi blog yaratish",
+        description="Yangi blog yaratish (admin uchun)",
+        request=BlogCreateSerializer,
+        responses={201: BlogSerializer}
+    ),
+    update=extend_schema(
+        summary="Blogni yangilash",
+        description="Blogni yangilash (admin uchun)",
+        request=BlogSerializer,
+        responses={200: BlogSerializer}
+    ),
+    partial_update=extend_schema(
+        summary="Blogni qisman yangilash",
+        description="Blogni qisman yangilash (admin uchun)",
+        request=BlogSerializer,
+        responses={200: BlogSerializer}
+    ),
+    destroy=extend_schema(
+        summary="Blogni o'chirish",
+        description="Blogni o'chirish (admin uchun)"
+    )
+)
+@extend_schema(tags=['Blogs'])
 class BlogViewSet(viewsets.ModelViewSet):
     queryset = Blog.objects.all().order_by("-created_date")
-    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    parser_classes = [MultiPartParser, FormParser]
     lookup_field = "slug"
     
     def get_permissions(self):
@@ -232,26 +295,10 @@ class BlogViewSet(viewsets.ModelViewSet):
             return BlogCreateSerializer
         return BlogSerializer
 
-    @swagger_auto_schema(
-        operation_description="Blog yaratish",
-        request_body=BlogCreateSerializer,
-        responses={201: BlogSerializer}
-    )
-    def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
-
     def perform_create(self, serializer):
         title = serializer.validated_data.get("title")
         slug = slugify(title)
         serializer.save(slug=slug)
-
-    @swagger_auto_schema(
-        operation_description="Blog yangilash",
-        request_body=BlogSerializer,
-        responses={200: BlogSerializer}
-    )
-    def update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
 
     def perform_update(self, serializer):
         title = serializer.validated_data.get("title")
@@ -261,10 +308,6 @@ class BlogViewSet(viewsets.ModelViewSet):
         else:
             serializer.save()
 
-    @swagger_auto_schema(
-        operation_description="Blogni olish va view count oshirish",
-        responses={200: BlogSerializer}
-    )
     def retrieve(self, request, *args, **kwargs):
         blog = self.get_object()
         hit_count = HitCount.objects.get_for_object(blog)
@@ -276,39 +319,90 @@ class BlogViewSet(viewsets.ModelViewSet):
 # ===============================================
 # CATEGORY VIEWSET
 # ===============================================
+@extend_schema_view(
+    list=extend_schema(
+        summary="Barcha kategoriyalarni olish",
+        description="Barcha kategoriyalarni olish"
+    ),
+    retrieve=extend_schema(
+        summary="Kategoriyani ID bo'yicha olish",
+        description="Kategoriyani ID bo'yicha olish"
+    ),
+    create=extend_schema(
+        summary="Yangi kategoriya yaratish",
+        description="Yangi kategoriya yaratish (admin uchun)",
+        request=CategorySerializer,
+        responses={201: CategorySerializer}
+    ),
+    update=extend_schema(
+        summary="Kategoriyani yangilash",
+        description="Kategoriyani yangilash (admin uchun)",
+        request=CategorySerializer,
+        responses={200: CategorySerializer}
+    ),
+    partial_update=extend_schema(
+        summary="Kategoriyani qisman yangilash",
+        description="Kategoriyani qisman yangilash (admin uchun)",
+        request=CategorySerializer,
+        responses={200: CategorySerializer}
+    ),
+    destroy=extend_schema(
+        summary="Kategoriyani o'chirish",
+        description="Kategoriyani o'chirish (admin uchun)"
+    )
+)
+@extend_schema(tags=['Categories'])
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    parser_classes = [MultiPartParser, FormParser]
     
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsAdminUser()]
         return [AllowAny()]
 
-    @swagger_auto_schema(
-        operation_description="Category yaratish",
-        request_body=CategorySerializer,
-        responses={201: CategorySerializer}
-    )
-    def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
-
-    @swagger_auto_schema(
-        operation_description="Category yangilash",
-        request_body=CategorySerializer,
-        responses={200: CategorySerializer}
-    )
-    def update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
-
 
 # ===============================================
 # SUBCATEGORY VIEWSET
 # ===============================================
+@extend_schema_view(
+    list=extend_schema(
+        summary="Barcha subkategoriyalarni olish",
+        description="Barcha subkategoriyalarni olish"
+    ),
+    retrieve=extend_schema(
+        summary="Subkategoriyani slug bo'yicha olish",
+        description="Subkategoriyani slug bo'yicha olish"
+    ),
+    create=extend_schema(
+        summary="Yangi subkategoriya yaratish",
+        description="Yangi subkategoriya yaratish (admin uchun)",
+        request=SubcategorySerializer,
+        responses={201: SubcategorySerializer}
+    ),
+    update=extend_schema(
+        summary="Subkategoriyani yangilash",
+        description="Subkategoriyani yangilash (admin uchun)",
+        request=SubcategorySerializer,
+        responses={200: SubcategorySerializer}
+    ),
+    partial_update=extend_schema(
+        summary="Subkategoriyani qisman yangilash",
+        description="Subkategoriyani qisman yangilash (admin uchun)",
+        request=SubcategorySerializer,
+        responses={200: SubcategorySerializer}
+    ),
+    destroy=extend_schema(
+        summary="Subkategoriyani o'chirish",
+        description="Subkategoriyani o'chirish (admin uchun)"
+    )
+)
+@extend_schema(tags=['Subcategories'])
 class SubcategoryViewSet(viewsets.ModelViewSet):
     queryset = Subcategory.objects.all()
     serializer_class = SubcategorySerializer
+    parser_classes = [MultiPartParser, FormParser]
     lookup_field = "slug"
     
     def get_permissions(self):
@@ -328,67 +422,152 @@ class SubcategoryViewSet(viewsets.ModelViewSet):
 # ===============================================
 # APPLICATION VIEWSET
 # ===============================================
+@extend_schema_view(
+    list=extend_schema(
+        summary="Barcha arizalarni olish",
+        description="Arizalarni filter va search qilish",
+        parameters=[
+            OpenApiParameter(
+                name='category',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description='Kategoriya ID'
+            ),
+            OpenApiParameter(
+                name='subcategory',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description='Subkategoriya ID'
+            ),
+            OpenApiParameter(
+                name='status',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Status',
+                enum=['pending', 'accepted', 'denied']
+            ),
+            OpenApiParameter(
+                name='region',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Viloyat'
+            ),
+            OpenApiParameter(
+                name='search',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Qidiruv (Ism, telefon, passport)'
+            ),
+        ],
+        responses={200: ApplicationSerializer(many=True)}
+    ),
+    retrieve=extend_schema(
+        summary="Arizani slug bo'yicha olish",
+        description="Arizani slug bo'yicha olish",
+        responses={200: ApplicationSerializer}
+    ),
+    create=extend_schema(
+        summary="Yangi ariza yaratish",
+        description="Yangi ariza yaratish (multipart/form-data)",
+        request={
+            'multipart/form-data': {
+                'type': 'object',
+                'properties': {
+                    'full_name': {'type': 'string'},
+                    'phone_number': {'type': 'string'},
+                    'birth_date': {'type': 'string', 'format': 'date'},
+                    'passport_number': {'type': 'string'},
+                    'region': {'type': 'string'},
+                    'location': {'type': 'string'},
+                    'category': {'type': 'integer'},
+                    'subcategory': {'type': 'integer'},
+                    'description': {'type': 'string'},
+                    'video': {'type': 'string', 'format': 'binary'},
+                    'document': {'type': 'string', 'format': 'binary'},
+                    'images': {
+                        'type': 'array',
+                        'items': {'type': 'string', 'format': 'binary'},
+                        'description': 'Rasm fayllari'
+                    }
+                },
+                'required': [
+                    'full_name', 'phone_number', 'birth_date',
+                    'passport_number', 'region', 'category', 'subcategory'
+                ]
+            }
+        },
+        responses={201: ApplicationSerializer}
+    ),
+    update=extend_schema(
+        summary="Arizani yangilash",
+        description="Arizani yangilash (admin uchun)",
+        request=ApplicationUpdateSerializer,
+        responses={200: ApplicationSerializer}
+    ),
+    partial_update=extend_schema(
+        summary="Arizani qisman yangilash",
+        description="Arizani qisman yangilash (admin uchun)",
+        request=ApplicationUpdateSerializer,
+        responses={200: ApplicationSerializer}
+    ),
+    destroy=extend_schema(
+        summary="Arizani o'chirish",
+        description="Arizani o'chirish (admin uchun)"
+    )
+)
+@extend_schema(tags=['Applications'])
 class ApplicationViewSet(viewsets.ModelViewSet):
     queryset = Application.objects.all().order_by("-created_date")
-    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    parser_classes = [MultiPartParser, FormParser]
     lookup_field = "slug"
     permission_classes = [AllowAny]
+
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['category', 'subcategory', 'status', 'region']
     search_fields = ['full_name', 'phone_number', 'passport_number']
-    
+
     def get_serializer_class(self):
         if self.action == 'create':
-            return ApplicationCreateSerializer
+            return ApplicationCreateWithFilesSerializer
         elif self.action in ['update', 'partial_update']:
             return ApplicationUpdateSerializer
         return ApplicationSerializer
 
-    @swagger_auto_schema(
-        request_body=ApplicationCreateSerializer,
-        responses={
-            201: ApplicationSerializer,
-            400: "Validation error"
-        }
-    )
     def create(self, request, *args, **kwargs):
-        full_name = request.data.get('full_name')
+        full_name = request.data.get("full_name")
         if not full_name:
             return Response({"error": "full_name kerak"}, status=400)
-            
+
         slug = slugify(full_name)
         counter = 1
         new_slug = slug
-        
+
         while Application.objects.filter(slug=new_slug).exists():
             new_slug = f"{slug}-{counter}"
             counter += 1
-        
-        serializer = self.get_serializer(data=request.data)
-        
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=400)
-        
-        application = serializer.save(slug=new_slug)
-        
-        response_serializer = ApplicationSerializer(application)
-        return Response(response_serializer.data, status=201)
 
-    @swagger_auto_schema(
-        operation_description="Ariza yangilash",
-        request_body=ApplicationUpdateSerializer,
-        responses={200: ApplicationSerializer}
-    )
-    def update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
+        # images ni alohida olish
+        data = request.data.copy()
+        
+        # images listini olish
+        images = request.FILES.getlist('images')
+        if images:
+            data['images'] = images
+        
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        
+        # Slug bilan application yaratish
+        validated_data = serializer.validated_data
+        validated_data['slug'] = new_slug
+        
+        # ApplicationCreateSerializer create metodini chaqiramiz
+        application = serializer.create(validated_data)
 
-    @swagger_auto_schema(
-        operation_description="Ariza qisman yangilash",
-        request_body=ApplicationUpdateSerializer,
-        responses={200: ApplicationSerializer}
-    )
-    def partial_update(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
+        return Response(
+            ApplicationSerializer(application).data,
+            status=status.HTTP_201_CREATED
+        )
 
     def perform_update(self, serializer):
         full_name = serializer.validated_data.get("full_name")
@@ -403,81 +582,132 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         else:
             serializer.save()
 
-    @swagger_auto_schema(
-        method='post',
-        operation_description="Arizaga rasm qo'shish",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                "image": openapi.Schema(
-                    type=openapi.TYPE_FILE,
-                    description="Rasm fayli"
-                ),
-                "image_url": openapi.Schema(
-                    type=openapi.TYPE_STRING,
-                    format='url',
-                    description="Rasm URL'i"
-                )
-            }
-        ),
+    @extend_schema(
+        summary="Arizaga bitta rasm qo'shish",
+        description="Arizaga bitta rasm qo'shish (admin uchun)",
+        request=ApplicationImageSerializer,
         responses={201: ApplicationImageSerializer}
     )
     @action(detail=True, methods=["post"], url_path="add-image")
     def add_image(self, request, slug=None):
         application = self.get_object()
-        
-        image_file = request.FILES.get('image')
-        image_url = request.data.get('image_url')
-        
-        if image_file:
-            # Rasm faylini tekshirish
-            content_type = image_file.content_type
-            if not content_type.startswith('image/'):
-                return Response(
-                    {"error": f"Faqat rasm fayllari yuklanishi mumkin. Siz yuborgan: {content_type}"},
-                    status=400
-                )
-            
-            serializer = ApplicationImageSerializer(data={'image': image_file})
-        elif image_url:
-            serializer = ApplicationImageSerializer(data={'image_url': image_url})
-        else:
-            return Response(
-                {"error": "Iltimos, image yoki image_url kiriting"},
-                status=400
-            )
-        
-        if serializer.is_valid():
-            serializer.save(application=application)
-            return Response(serializer.data, status=201)
-        return Response(serializer.errors, status=400)
 
-    @swagger_auto_schema(
-        method='patch',
-        operation_description="Ariza statusini o'zgartirish",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            required=['status'],
-            properties={
-                "status": openapi.Schema(
-                    type=openapi.TYPE_STRING,
-                    enum=["pending", "accepted", "denied"],
-                    description="Yangi status"
-                ),
-                "denied_reason": openapi.Schema(
-                    type=openapi.TYPE_STRING,
-                    description="Rad etish sababi (faqat denied statusida)"
-                )
+        image_file = request.FILES.get("image")
+        image_url = request.data.get("image_url")
+
+        if not image_file and not image_url:
+            return Response({"error": "image yoki image_url kiriting"}, status=400)
+
+        serializer = ApplicationImageSerializer(
+            data={"image": image_file, "image_url": image_url}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save(application=application)
+
+        return Response(serializer.data, status=201)
+
+    @extend_schema(
+        summary="Arizaga bir nechta rasm qo'shish",
+        description="Arizaga bir nechta rasm qo'shish (admin uchun)",
+        request={
+            'multipart/form-data': {
+                'type': 'object',
+                'properties': {
+                    'images': {
+                        'type': 'array',
+                        'items': {'type': 'string', 'format': 'binary'},
+                        'description': 'Rasm fayllari'
+                    }
+                },
+                'required': ['images']
             }
-        ),
-        responses={200: openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                "detail": openapi.Schema(type=openapi.TYPE_STRING),
-                "status": openapi.Schema(type=openapi.TYPE_STRING),
-                "denied_reason": openapi.Schema(type=openapi.TYPE_STRING)
+        },
+        responses={
+            201: {
+                'type': 'object',
+                'properties': {
+                    'detail': {'type': 'string'},
+                    'added_count': {'type': 'integer'}
+                }
             }
-        )}
+        }
+    )
+    @action(detail=True, methods=["post"], url_path="add-images")
+    def add_images(self, request, slug=None):
+        application = self.get_object()
+        images = request.FILES.getlist("images")
+
+        if not images:
+            return Response({"error": "Rasm yuborilmadi"}, status=400)
+
+        added = 0
+        for image in images:
+            ApplicationImage.objects.create(
+                application=application,
+                image=image
+            )
+            added += 1
+
+        return Response(
+            {"detail": f"{added} ta rasm qo'shildi", "added_count": added},
+            status=201
+        )
+
+    @extend_schema(
+        summary="Arizaning barcha rasmlarini olish",
+        description="Arizaning barcha rasmlarini olish",
+        responses={200: ApplicationImageSerializer(many=True)}
+    )
+    @action(detail=True, methods=["get"], url_path="images")
+    def get_images(self, request, slug=None):
+        application = self.get_object()
+        serializer = ApplicationImageSerializer(application.images.all(), many=True)
+        return Response(serializer.data)
+
+    @extend_schema(
+        summary="Arizaning barcha rasmlarini o'chirish",
+        description="Arizaning barcha rasmlarini o'chirish (admin uchun)",
+        responses={
+            200: {
+                'type': 'object',
+                'properties': {
+                    'detail': {'type': 'string'},
+                    'deleted_count': {'type': 'integer'}
+                }
+            }
+        }
+    )
+    @action(detail=True, methods=["delete"], url_path="delete-all-images")
+    def delete_all_images(self, request, slug=None):
+        application = self.get_object()
+        deleted_count, _ = application.images.all().delete()
+
+        return Response({
+            "detail": f"{deleted_count} ta rasm o'chirildi",
+            "deleted_count": deleted_count
+        })
+
+    @extend_schema(
+        summary="Ariza statusini o'zgartirish",
+        description="Ariza statusini o'zgartirish (admin uchun)",
+        request={
+            'application/json': {
+                'type': 'object',
+                'properties': {
+                    'status': {
+                        'type': 'string',
+                        'enum': ['pending', 'accepted', 'denied'],
+                        'description': 'Yangi status'
+                    },
+                    'denied_reason': {
+                        'type': 'string',
+                        'description': 'Rad etilgan sababi (faqat status=denied bo\'lsa)'
+                    }
+                },
+                'required': ['status']
+            }
+        },
+        responses={200: ApplicationSerializer}
     )
     @action(detail=True, methods=["patch"], url_path="set-status")
     def set_status(self, request, slug=None):
@@ -486,158 +716,91 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         denied_reason = request.data.get("denied_reason", "")
 
         if status_value not in ["pending", "accepted", "denied"]:
-            return Response({"error": "Noto'g'ri status qiymati"}, status=400)
+            return Response({"error": "Noto'g'ri status"}, status=400)
 
         application.status = status_value
         application.denied_reason = denied_reason if status_value == "denied" else ""
         application.save()
 
-        return Response({
-            "detail": "Status yangilandi",
-            "status": application.status,
-            "denied_reason": application.denied_reason
-        })
-    
-    @swagger_auto_schema(
-        method='post',
-        operation_description="Arizaga bir nechta rasm qo'shish",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                "images": openapi.Schema(
-                    type=openapi.TYPE_ARRAY,
-                    items=openapi.Items(type=openapi.TYPE_FILE),
-                    description="Rasm fayllari listi"
-                )
-            }
-        ),
-        responses={201: openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                "detail": openapi.Schema(type=openapi.TYPE_STRING),
-                "added_count": openapi.Schema(type=openapi.TYPE_INTEGER)
-            }
-        )}
-    )
-    @action(detail=True, methods=["post"], url_path="add-images")
-    def add_images(self, request, slug=None):
-        """Bir nechta rasm fayllarini qo'shish"""
-        application = self.get_object()
-        images = request.FILES.getlist('images', [])
-        
-        if not images:
-            return Response({"error": "Hech qanday rasm yuborilmadi"}, status=400)
-        
-        added_count = 0
-        errors = []
-        
-        for image_file in images:
-            # Rasm faylini tekshirish
-            content_type = image_file.content_type
-            if not content_type.startswith('image/'):
-                errors.append(f"Fayl: {image_file.name} - Rasm emas: {content_type}")
-                continue
-            
-            try:
-                ApplicationImage.objects.create(
-                    application=application,
-                    image=image_file
-                )
-                added_count += 1
-            except Exception as e:
-                errors.append(f"Fayl: {image_file.name} - Xato: {str(e)}")
-        
-        response_data = {
-            "detail": f"{added_count} ta rasm qo'shildi",
-            "added_count": added_count
-        }
-        
-        if errors:
-            response_data["errors"] = errors
-        
-        return Response(response_data, status=201)
-    
-    @swagger_auto_schema(
-        operation_description="Ariza rasmlarini olish",
-        responses={200: ApplicationImageSerializer(many=True)}
-    )
-    @action(detail=True, methods=["get"], url_path="images")
-    def get_images(self, request, slug=None):
-        """Ariza rasmlarini olish"""
-        application = self.get_object()
-        images = application.images.all()
-        serializer = ApplicationImageSerializer(images, many=True)
+        serializer = self.get_serializer(application)
         return Response(serializer.data)
-    
-    @swagger_auto_schema(
-        method='delete',
-        operation_description="Arizaning barcha rasmlarini o'chirish",
-        responses={200: openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                "detail": openapi.Schema(type=openapi.TYPE_STRING),
-                "deleted_count": openapi.Schema(type=openapi.TYPE_INTEGER)
-            }
-        )}
-    )
-    @action(detail=True, methods=["delete"], url_path="delete-all-images")
-    def delete_all_images(self, request, slug=None):
-        """Arizaning barcha rasmlarini o'chirish"""
-        application = self.get_object()
-        deleted_count, _ = application.images.all().delete()
-        
-        return Response({
-            "detail": f"{deleted_count} ta rasm o'chirildi",
-            "deleted_count": deleted_count
-        })
 
 
 # ===============================================
 # APPLICATION IMAGE VIEWSET
 # ===============================================
+@extend_schema_view(
+    list=extend_schema(
+        summary="Barcha ariza rasmlarini olish",
+        description="Barcha ariza rasmlarini olish"
+    ),
+    retrieve=extend_schema(
+        summary="Ariza rasmini ID bo'yicha olish",
+        description="Ariza rasmini ID bo'yicha olish"
+    ),
+    create=extend_schema(
+        summary="Yangi ariza rasmini yaratish",
+        description="Yangi ariza rasmini yaratish (admin uchun)",
+        request=ApplicationImageSerializer,
+        responses={201: ApplicationImageSerializer}
+    ),
+    update=extend_schema(
+        summary="Ariza rasmini yangilash",
+        description="Ariza rasmini yangilash (admin uchun)",
+        request=ApplicationImageSerializer,
+        responses={200: ApplicationImageSerializer}
+    ),
+    partial_update=extend_schema(
+        summary="Ariza rasmini qisman yangilash",
+        description="Ariza rasmini qisman yangilash (admin uchun)",
+        request=ApplicationImageSerializer,
+        responses={200: ApplicationImageSerializer}
+    ),
+    destroy=extend_schema(
+        summary="Ariza rasmini o'chirish",
+        description="Ariza rasmini o'chirish (admin uchun)"
+    )
+)
+@extend_schema(tags=['Application Images'])
 class ApplicationImageViewSet(viewsets.ModelViewSet):
     queryset = ApplicationImage.objects.all().order_by("-created_date")
     serializer_class = ApplicationImageSerializer
-    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    parser_classes = [MultiPartParser, FormParser]
     
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsAdminUser()]
         return [AllowAny()]
 
-    @swagger_auto_schema(
-        operation_description="Ariza rasmini yaratish",
-        request_body=ApplicationImageSerializer,
-        responses={201: ApplicationImageSerializer}
-    )
-    def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
-
 
 # ===============================================
 # AUTH VIEWS
 # ===============================================
+@extend_schema(tags=['Auth'])
 class RegisterView(CreateAPIView):
     serializer_class = CustomRegisterSerializer
     permission_classes = [AllowAny]
 
-    @swagger_auto_schema(
-        operation_description="Ro'yxatdan o'tish",
-        request_body=CustomRegisterSerializer,
-        responses={201: openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                "refresh": openapi.Schema(type=openapi.TYPE_STRING),
-                "access": openapi.Schema(type=openapi.TYPE_STRING),
-                "user": openapi.Schema(
-                    type=openapi.TYPE_OBJECT,
-                    properties={
-                        "id": openapi.Schema(type=openapi.TYPE_INTEGER),
-                        "email": openapi.Schema(type=openapi.TYPE_STRING),
+    @extend_schema(
+        summary="Ro'yxatdan o'tish",
+        description="Yangi foydalanuvchi ro'yxatdan o'tishi",
+        request=CustomRegisterSerializer,
+        responses={
+            201: {
+                'type': 'object',
+                'properties': {
+                    'refresh': {'type': 'string'},
+                    'access': {'type': 'string'},
+                    'user': {
+                        'type': 'object',
+                        'properties': {
+                            'id': {'type': 'integer'},
+                            'email': {'type': 'string'}
+                        }
                     }
-                )
+                }
             }
-        )}
+        }
     )
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -656,19 +819,41 @@ class RegisterView(CreateAPIView):
         return Response(data, status=201)
 
 
+@extend_schema(tags=['Auth'])
 class LoginView(APIView):
     permission_classes = [AllowAny]
     
-    @swagger_auto_schema(
-        operation_description="Login qilish (JWT token qaytaradi)",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                "email": openapi.Schema(type=openapi.TYPE_STRING, format="email"),
-                "password": openapi.Schema(type=openapi.TYPE_STRING, format="password"),
-            },
-            required=["email", "password"],
-        ),
+    @extend_schema(
+        summary="Login qilish",
+        description="Email va parol orqali tizimga kirish (JWT token qaytaradi)",
+        request={
+            'application/json': {
+                'type': 'object',
+                'properties': {
+                    'email': {'type': 'string', 'format': 'email'},
+                    'password': {'type': 'string', 'format': 'password'}
+                },
+                'required': ['email', 'password']
+            }
+        },
+        responses={
+            200: {
+                'type': 'object',
+                'properties': {
+                    'refresh': {'type': 'string'},
+                    'access': {'type': 'string'},
+                    'user': {
+                        'type': 'object',
+                        'properties': {
+                            'id': {'type': 'integer'},
+                            'email': {'type': 'string'},
+                            'first_name': {'type': 'string'},
+                            'last_name': {'type': 'string'}
+                        }
+                    }
+                }
+            }
+        }
     )
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
@@ -677,18 +862,31 @@ class LoginView(APIView):
         return Response(serializer.errors, status=400)
 
 
+@extend_schema(tags=['Auth'])
 class TokenRefreshView(APIView):
     permission_classes = [AllowAny]
     
-    @swagger_auto_schema(
-        operation_description="JWT token yangilash",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                "refresh": openapi.Schema(type=openapi.TYPE_STRING),
-            },
-            required=["refresh"],
-        ),
+    @extend_schema(
+        summary="JWT token yangilash",
+        description="Refresh token orqali yangi access token olish",
+        request={
+            'application/json': {
+                'type': 'object',
+                'properties': {
+                    'refresh': {'type': 'string'}
+                },
+                'required': ['refresh']
+            }
+        },
+        responses={
+            200: {
+                'type': 'object',
+                'properties': {
+                    'access': {'type': 'string'},
+                    'refresh': {'type': 'string'}
+                }
+            }
+        }
     )
     def post(self, request):
         try:
@@ -704,13 +902,15 @@ class TokenRefreshView(APIView):
             return Response({"error": "Yaroqsiz token"}, status=400)
 
 
+@extend_schema(tags=['Auth'])
 class ProfileAPIView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
-    @swagger_auto_schema(
-        operation_description="Profil ma'lumotlarini olish",
-        responses={200: ProfileSerializer, 404: "Profil topilmadi"}
+    @extend_schema(
+        summary="Profil ma'lumotlarini olish",
+        description="Foydalanuvchi profil ma'lumotlarini olish",
+        responses={200: ProfileSerializer, 404: OpenApiTypes.OBJECT}
     )
     def get(self, request):
         try:
@@ -720,10 +920,11 @@ class ProfileAPIView(APIView):
         except Profile.DoesNotExist:
             return Response({"error": "Profil topilmadi"}, status=404)
 
-    @swagger_auto_schema(
-        operation_description="Profil ma'lumotlarini yangilash",
-        request_body=ProfileSerializer,
-        responses={200: ProfileSerializer, 400: "Xatolik"}
+    @extend_schema(
+        summary="Profil ma'lumotlarini yangilash",
+        description="Foydalanuvchi profil ma'lumotlarini yangilash",
+        request=ProfileSerializer,
+        responses={200: ProfileSerializer, 400: OpenApiTypes.OBJECT}
     )
     def put(self, request):
         try:
@@ -737,26 +938,30 @@ class ProfileAPIView(APIView):
             return Response({"error": "Profil topilmadi"}, status=404)
 
 
+@extend_schema(tags=['Auth'])
 class TestAuthView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
     
-    @swagger_auto_schema(
-        operation_description="Autentifikatsiyani test qilish",
-        responses={200: openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                "message": openapi.Schema(type=openapi.TYPE_STRING),
-                "user": openapi.Schema(
-                    type=openapi.TYPE_OBJECT,
-                    properties={
-                        "id": openapi.Schema(type=openapi.TYPE_INTEGER),
-                        "email": openapi.Schema(type=openapi.TYPE_STRING),
-                        "username": openapi.Schema(type=openapi.TYPE_STRING),
+    @extend_schema(
+        summary="Autentifikatsiyani test qilish",
+        description="JWT token orqali autentifikatsiyani test qilish",
+        responses={
+            200: {
+                'type': 'object',
+                'properties': {
+                    'message': {'type': 'string'},
+                    'user': {
+                        'type': 'object',
+                        'properties': {
+                            'id': {'type': 'integer'},
+                            'email': {'type': 'string'},
+                            'username': {'type': 'string'}
+                        }
                     }
-                )
+                }
             }
-        )}
+        }
     )
     def get(self, request):
         return Response({
@@ -772,27 +977,31 @@ class TestAuthView(APIView):
 # ===============================================
 # STATISTICS VIEW
 # ===============================================
+@extend_schema(tags=['Statistics'])
 class StatisticsAPIView(APIView):
     permission_classes = [AllowAny]
     
-    @swagger_auto_schema(
-        operation_description="Umumiy statistika",
-        responses={200: openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                "total_applications": openapi.Schema(type=openapi.TYPE_INTEGER, description="Jami arizalar soni"),
-                "accepted_applications": openapi.Schema(type=openapi.TYPE_INTEGER, description="Qabul qilingan arizalar"),
-                "denied_applications": openapi.Schema(type=openapi.TYPE_INTEGER, description="Rad etilgan arizalar"),
-                "pending_applications": openapi.Schema(type=openapi.TYPE_INTEGER, description="Ko'rib chiqilayotgan arizalar"),
-                "total_users": openapi.Schema(type=openapi.TYPE_INTEGER, description="Jami foydalanuvchilar"),
-                "total_blogs": openapi.Schema(type=openapi.TYPE_INTEGER, description="Jami bloglar"),
-                               "total_categories": openapi.Schema(type=openapi.TYPE_INTEGER, description="Jami kategoriyalar"),
-                "total_subcategories": openapi.Schema(type=openapi.TYPE_INTEGER, description="Jami subkategoriyalar"),
-                "total_banners": openapi.Schema(type=openapi.TYPE_INTEGER, description="Jami bannerlar"),
-                "total_contacts": openapi.Schema(type=openapi.TYPE_INTEGER, description="Jami contact xabarlar"),
-                "unread_contacts": openapi.Schema(type=openapi.TYPE_INTEGER, description="O'qilmagan contact xabarlar"),
+    @extend_schema(
+        summary="Umumiy statistika",
+        description="Platforma umumiy statistikasi",
+        responses={
+            200: {
+                'type': 'object',
+                'properties': {
+                    'total_applications': {'type': 'integer', 'description': 'Jami arizalar soni'},
+                    'accepted_applications': {'type': 'integer', 'description': 'Qabul qilingan arizalar'},
+                    'denied_applications': {'type': 'integer', 'description': 'Rad etilgan arizalar'},
+                    'pending_applications': {'type': 'integer', 'description': 'Ko\'rib chiqilayotgan arizalar'},
+                    'total_users': {'type': 'integer', 'description': 'Jami foydalanuvchilar'},
+                    'total_blogs': {'type': 'integer', 'description': 'Jami bloglar'},
+                    'total_categories': {'type': 'integer', 'description': 'Jami kategoriyalar'},
+                    'total_subcategories': {'type': 'integer', 'description': 'Jami subkategoriyalar'},
+                    'total_banners': {'type': 'integer', 'description': 'Jami bannerlar'},
+                    'total_contacts': {'type': 'integer', 'description': 'Jami contact xabarlar'},
+                    'unread_contacts': {'type': 'integer', 'description': 'O\'qilmagan contact xabarlar'},
+                }
             }
-        )}
+        }
     )
     def get(self, request):
         data = {
@@ -814,6 +1023,41 @@ class StatisticsAPIView(APIView):
 # ===============================================
 # CONTACT US VIEWSET
 # ===============================================
+@extend_schema_view(
+    list=extend_schema(
+        summary="Barcha contact xabarlarini olish",
+        description="Barcha contact xabarlarini olish (admin uchun)",
+        responses={200: ContactUsSerializer(many=True)}
+    ),
+    retrieve=extend_schema(
+        summary="Contact xabarni ID bo'yicha olish",
+        description="Contact xabarni ID bo'yicha olish (admin uchun)",
+        responses={200: ContactUsSerializer}
+    ),
+    create=extend_schema(
+        summary="Yangi contact xabar yaratish",
+        description="Yangi contact xabar yaratish",
+        request=ContactUsSerializer,
+        responses={201: ContactUsSerializer}
+    ),
+    update=extend_schema(
+        summary="Contact xabarni yangilash",
+        description="Contact xabarni yangilash (admin uchun)",
+        request=ContactUsSerializer,
+        responses={200: ContactUsSerializer}
+    ),
+    partial_update=extend_schema(
+        summary="Contact xabarni qisman yangilash",
+        description="Contact xabarni qisman yangilash (admin uchun)",
+        request=ContactUsSerializer,
+        responses={200: ContactUsSerializer}
+    ),
+    destroy=extend_schema(
+        summary="Contact xabarni o'chirish",
+        description="Contact xabarni o'chirish (admin uchun)"
+    )
+)
+@extend_schema(tags=['Contact Us'])
 class ContactUsViewSet(viewsets.ModelViewSet):
     queryset = ContactUs.objects.all().order_by("-created_date")
     serializer_class = ContactUsSerializer
@@ -824,11 +1068,6 @@ class ContactUsViewSet(viewsets.ModelViewSet):
             return [IsAdminUser()]
         return [AllowAny()]
 
-    @swagger_auto_schema(
-        operation_description="Contact xabar yaratish",
-        request_body=ContactUsSerializer,
-        responses={201: ContactUsSerializer}
-    )
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -845,8 +1084,9 @@ class ContactUsViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data, status=201)
 
-    @swagger_auto_schema(
-        operation_description="Xabarni o'qilgan deb belgilash",
+    @extend_schema(
+        summary="Xabarni o'qilgan deb belgilash",
+        description="Xabarni o'qilgan deb belgilash (admin uchun)",
         responses={200: ContactUsSerializer}
     )
     @action(detail=True, methods=['patch'], url_path='mark-read')
@@ -861,9 +1101,10 @@ class ContactUsViewSet(viewsets.ModelViewSet):
 # ===============================================
 # FILTER VIEWS
 # ===============================================
-@swagger_auto_schema(
-    method='get',
-    operation_description="Kategoriya bo'yicha arizalarni olish",
+@extend_schema(
+    methods=['GET'],
+    summary="Kategoriya bo'yicha arizalarni olish",
+    description="Kategoriya ID bo'yicha arizalarni olish",
     responses={200: ApplicationSerializer(many=True)}
 )
 @api_view(['GET'])
@@ -874,9 +1115,10 @@ def applications_by_category(request, category_id):
     return Response(serializer.data)
 
 
-@swagger_auto_schema(
-    method='get',
-    operation_description="Subkategoriya bo'yicha arizalarni olish",
+@extend_schema(
+    methods=['GET'],
+    summary="Subkategoriya bo'yicha arizalarni olish",
+    description="Subkategoriya ID bo'yicha arizalarni olish",
     responses={200: ApplicationSerializer(many=True)}
 )
 @api_view(['GET'])
@@ -887,40 +1129,41 @@ def applications_by_subcategory(request, subcategory_id):
     return Response(serializer.data)
 
 
-@swagger_auto_schema(
-    method='get',
-    operation_description="Arizalarni filter qilish",
-    manual_parameters=[
-        openapi.Parameter(
-            'category',
-            openapi.IN_QUERY,
-            description="Kategoriya ID",
-            type=openapi.TYPE_INTEGER
+@extend_schema(
+    methods=['GET'],
+    summary="Arizalarni filter qilish",
+    description="Arizalarni turli parametrlar bo'yicha filter qilish",
+    parameters=[
+        OpenApiParameter(
+            name='category',
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.QUERY,
+            description='Kategoriya ID'
         ),
-        openapi.Parameter(
-            'subcategory',
-            openapi.IN_QUERY,
-            description="Subkategoriya ID",
-            type=openapi.TYPE_INTEGER
+        OpenApiParameter(
+            name='subcategory',
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.QUERY,
+            description='Subkategoriya ID'
         ),
-        openapi.Parameter(
-            'status',
-            openapi.IN_QUERY,
-            description="Status",
-            type=openapi.TYPE_STRING,
+        OpenApiParameter(
+            name='status',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description='Status',
             enum=['pending', 'accepted', 'denied']
         ),
-        openapi.Parameter(
-            'region',
-            openapi.IN_QUERY,
-            description="Viloyat",
-            type=openapi.TYPE_STRING
+        OpenApiParameter(
+            name='region',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description='Viloyat'
         ),
-        openapi.Parameter(
-            'search',
-            openapi.IN_QUERY,
-            description="Qidiruv (Ism, telefon, passport)",
-            type=openapi.TYPE_STRING
+        OpenApiParameter(
+            name='search',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description='Qidiruv (Ism, telefon, passport)'
         ),
     ],
     responses={200: ApplicationSerializer(many=True)}

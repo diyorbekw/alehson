@@ -43,12 +43,14 @@ INSTALLED_APPS = [
     "allauth.socialaccount",
     "allauth.socialaccount.providers.google",
 
-    "drf_yasg",
+    # "drf_yasg",  # <-- BU QATORNI O'CHIRIB TASHALANG YO'Q # QILING
 
     "core.apps.CoreConfig",
     "ckeditor",
     "ckeditor_uploader",
     "hitcount",
+    
+    'drf_spectacular',  # <-- drf-spectacular qo'shilgan
 ]
 
 if DEBUG:
@@ -160,6 +162,7 @@ REST_FRAMEWORK = {
         'rest_framework.filters.SearchFilter',
         'rest_framework.filters.OrderingFilter',
     ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',  # <-- drf-spectacular uchun
 }
 
 SIMPLE_JWT = {
@@ -218,24 +221,73 @@ SOCIALACCOUNT_PROVIDERS = {
 }
 
 # ---------------- Swagger ----------------
-SWAGGER_SETTINGS = {
+# BU BLOKNI O'CHIRIB TASHALANG YO'Q # QILING, CHUNKI drf_yasg ISHLATILMAYDI
+# SWAGGER_SETTINGS = {
+#     'SECURITY_DEFINITIONS': {
+#         'Bearer': {
+#             'type': 'apiKey',
+#             'name': 'Authorization',
+#             'in': 'header',
+#             'description': 'JWT token: Bearer <token>'
+#         }
+#     },
+#     'USE_SESSION_AUTH': False,
+#     'JSON_EDITOR': True,
+#     'SHOW_REQUEST_HEADERS': True,
+#     'OPERATIONS_SORTER': 'alpha',
+#     'TAGS_SORTER': 'alpha',
+#     'DOC_EXPANSION': 'list',
+#     'DEFAULT_MODEL_RENDERING': 'example',
+#     'DEFAULT_MODEL_DEPTH': 2,
+#     'DEFAULT_API_URL': "http://127.0.0.1:8000"
+# }
+
+# ---------------- drf-spectacular settings ----------------
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Alehson API',
+    'DESCRIPTION': 'Alehson platformasi API dokumentatsiyasi',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,  # Bu file upload uchun muhim
+    'SWAGGER_UI_SETTINGS': {
+        'deepLinking': True,
+        'persistAuthorization': True,
+        'displayOperationId': True,
+        'filter': True,
+        'docExpansion': 'none',
+        'tagsSorter': 'alpha',
+        'operationsSorter': 'alpha',
+        'defaultModelsExpandDepth': 2,
+        'defaultModelExpandDepth': 2,
+        'displayRequestDuration': True,
+        'showExtensions': True,
+        'showCommonExtensions': True,
+    },
+    'SCHEMA_PATH_PREFIX': '/api/',
+    'SECURITY': [{'Bearer': []}],
     'SECURITY_DEFINITIONS': {
         'Bearer': {
-            'type': 'apiKey',
-            'name': 'Authorization',
-            'in': 'header',
-            'description': 'JWT token: Bearer <token>'
+            'type': 'http',
+            'scheme': 'bearer',
+            'bearerFormat': 'JWT',
         }
     },
-    'USE_SESSION_AUTH': False,
-    'JSON_EDITOR': True,
-    'SHOW_REQUEST_HEADERS': True,
-    'OPERATIONS_SORTER': 'alpha',
-    'TAGS_SORTER': 'alpha',
-    'DOC_EXPANSION': 'list',
-    'DEFAULT_MODEL_RENDERING': 'example',
-    'DEFAULT_MODEL_DEPTH': 2,
-    'DEFAULT_API_URL': "https://django.alehson.uz"
+    'TAGS': [
+        {'name': 'Auth', 'description': 'Autentifikatsiya va autorizatsiya'},
+        {'name': 'Applications', 'description': 'Arizalar bilan ishlash'},
+        {'name': 'Blogs', 'description': 'Blog postlar'},
+        {'name': 'Categories', 'description': 'Kategoriyalar'},
+        {'name': 'Subcategories', 'description': 'Subkategoriyalar'},
+        {'name': 'Banners', 'description': 'Bannerlar'},
+        {'name': 'About', 'description': 'Platforma haqida'},
+        {'name': 'Statistics', 'description': 'Statistika'},
+        {'name': 'Contact Us', 'description': 'Aloqa'},
+        {'name': 'Application Images', 'description': 'Ariza rasmlari'},
+    ],
+    'SERVERS': [
+        {'url': 'http://127.0.0.1:8000', 'description': 'Development server'},
+        {'url': 'https://django.alehson.uz', 'description': 'Production server'},
+    ],
 }
 
 # ---------------- Production SSL ----------------
