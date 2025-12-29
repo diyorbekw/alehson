@@ -4,12 +4,12 @@ from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-DEBUG = False
+DEBUG = True
 
 SECRET_KEY = 'django-insecure-(n84&=0@4)^rsih1&f%@a+8sbh5_2ppp!uh9^j_e3ktn22xh3t'
 
 ALLOWED_HOSTS = [
-    "api.alehson.uz",
+    "django.alehson.uz",
     "www.navksz.uz",
     "navksz.uz",
     "localhost",
@@ -183,7 +183,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:8000",
     "http://127.0.0.1:8000",
     "https://alehson.sifatdev.uz",
-    "https://api.alehson.uz",
+    "https://django.alehson.uz",
     "https://alehson-site-client.vercel.app"
 ]
 
@@ -192,7 +192,7 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://localhost:3001",
     "http://127.0.0.1:3001",
-    "https://api.alehson.uz",
+    "https://django.alehson.uz",
     "https://alehson-site-client.vercel.app",
 ]
 
@@ -235,7 +235,7 @@ SWAGGER_SETTINGS = {
     'DOC_EXPANSION': 'list',
     'DEFAULT_MODEL_RENDERING': 'example',
     'DEFAULT_MODEL_DEPTH': 2,
-    'DEFAULT_API_URL': "http://api.alehson.uz"
+    'DEFAULT_API_URL': "https://django.alehson.uz"
 }
 
 # ---------------- Production SSL ----------------
