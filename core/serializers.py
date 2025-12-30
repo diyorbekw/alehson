@@ -177,7 +177,7 @@ class ApplicationCreateWithFilesSerializer(serializers.ModelSerializer):
         model = Application
         fields = [
             'full_name', 'phone_number', 'birth_date', 'passport_number',
-            'region', 'location', 'category', 'subcategory', 'description',
+            'region', 'district', 'location', 'category', 'subcategory', 'description',
             'video', 'document'
         ]
         extra_kwargs = {
@@ -186,6 +186,7 @@ class ApplicationCreateWithFilesSerializer(serializers.ModelSerializer):
             'birth_date': {'required': True},
             'passport_number': {'required': True},
             'region': {'required': True},
+            'district': {'required': True},
             'category': {'required': True},
             'subcategory': {'required': True}
         }
@@ -196,7 +197,7 @@ class ApplicationUpdateSerializer(serializers.ModelSerializer):
         model = Application
         fields = [
             'full_name', 'phone_number', 'birth_date', 'passport_number',
-            'region', 'location', 'category', 'subcategory', 'description',
+            'region', 'district', 'location', 'category', 'subcategory', 'description',
             'status'
         ]
         read_only_fields = ['slug', 'denied_reason', 'created_date']

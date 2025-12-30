@@ -221,6 +221,7 @@ class Application(models.Model):
     birth_date = models.DateField()
     passport_number = models.CharField(max_length=50)
     region = models.CharField(max_length=50, choices=REGION_CHOICES)
+    district = models.CharField(max_length=100, blank=True)
     location = models.CharField(max_length=255)
     category = models.ForeignKey("Category", on_delete=models.CASCADE)
     subcategory = models.ForeignKey("Subcategory", on_delete=models.CASCADE)
