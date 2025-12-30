@@ -547,55 +547,47 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             new_slug = f"{slug}-{counter}"
             counter += 1
 
-        # Request datani copy qilamiz lekin images ni maxsus ishlaymiz
-        data = request.data.copy()
+        # Request datani to'g'ri formatlash
+        data = {}
+        for field in ['full_name', 'phone_number', 'birth_date', 'passport_number',
+                    'region', 'location', 'category', 'subcategory', 'description']:
+            data[field] = request.data.get(field)
         
-        # images ni alohida o'zgaruvchiga saqlaymiz
+        # Fayllarni qo'shamiz
+        data['video'] = request.FILES.get('video')
+        data['document'] = request.FILES.get('document')
+        
+        # Rasm fayllarini list qilamiz
         images_files = request.FILES.getlist('images')
         
-        # Serializer uchun tayyorlash
-        serializer_data = {
-            'full_name': data.get('full_name'),
-            'phone_number': data.get('phone_number'),
-            'birth_date': data.get('birth_date'),
-            'passport_number': data.get('passport_number'),
-            'region': data.get('region'),
-            'location': data.get('location'),
-            'category': data.get('category'),
-            'subcategory': data.get('subcategory'),
-            'description': data.get('description'),
-            'video': request.FILES.get('video'),
-            'document': request.FILES.get('document'),
-            'slug': new_slug,  # Slug ni qo'shamiz
-        }
+        # Serializer yaratish
+        serializer = self.get_serializer(data=data)
         
-        # Serializer yaratish va validation qilish
-        serializer = self.get_serializer(data=serializer_data)
-        serializer.is_valid(raise_exception=True)
+        # Validation
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Slug ni validated_data ga qo'shamiz
+        validated_data = serializer.validated_data
         
         # Application yaratish
-        validated_data = serializer.validated_data
-        validated_data.pop('slug', None)  # Slug ni olib tashlaymiz, chunki Model yaratishda ishlatamiz
-        
-        # Model yaratish
         application = Application.objects.create(
             slug=new_slug,
             **validated_data
         )
         
         # Rasm fayllarini saqlash
-        if images_files:
-            for image_file in images_files:
-                ApplicationImage.objects.create(
-                    application=application,
-                    image=image_file
-                )
+        for image_file in images_files:
+            ApplicationImage.objects.create(
+                application=application,
+                image=image_file
+            )
         
         return Response(
             ApplicationSerializer(application).data,
             status=status.HTTP_201_CREATED
         )
-
+    
     def perform_update(self, serializer):
         full_name = serializer.validated_data.get("full_name")
         if full_name:

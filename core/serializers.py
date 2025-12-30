@@ -169,26 +169,16 @@ class ApplicationCreateSerializer(serializers.ModelSerializer):
         }
 
 
-# ==================== APPLICATION CREATE WITH FILES SERIALIZER ====================
 class ApplicationCreateWithFilesSerializer(serializers.ModelSerializer):
-    video = serializers.FileField(
-        required=False,
-        allow_null=True,
-        help_text="Video fayl (mp4, mov, avi, etc.)"
-    )
-    document = serializers.FileField(
-        required=False,
-        allow_null=True,
-        help_text="Hujjat fayli (pdf, doc, docx, etc.)"
-    )
+    video = serializers.FileField(required=False, allow_null=True)
+    document = serializers.FileField(required=False, allow_null=True)
+    
+    # images maydonini faqat write_only qilamiz
     images = serializers.ListField(
-        child=serializers.ImageField(
-            help_text="Rasm fayli (jpg, jpeg, png, etc.)"
-        ),
+        child=serializers.ImageField(),
         required=False,
         default=[],
-        write_only=True,
-        help_text="Rasm fayllari ro'yxati"
+        write_only=True
     )
     
     class Meta:
@@ -208,35 +198,6 @@ class ApplicationCreateWithFilesSerializer(serializers.ModelSerializer):
             'subcategory': {'required': True}
         }
     
-    def to_internal_value(self, data):
-        ret = super().to_internal_value(data)
-        if 'images' not in ret:
-            ret['images'] = []
-        return ret
-    
-    def validate(self, data):
-        category = data.get('category')
-        subcategory = data.get('subcategory')
-        
-        if category and subcategory:
-            if subcategory not in category.subcategories.all():
-                raise serializers.ValidationError({
-                    "subcategory": f"Tanlangan subcategory '{subcategory.title}' "
-                                   f"'{category.title}' kategoriyasiga tegishli emas."
-                })
-        
-        # Rasm fayllarini tekshirish
-        images = data.get('images', [])
-        for image in images:
-            if hasattr(image, 'content_type'):
-                content_type = image.content_type
-                if not content_type.startswith('image/'):
-                    raise serializers.ValidationError({
-                        "images": f"Faqat rasm fayllari yuklanishi mumkin. Siz yuborgan: {content_type}"
-                    })
-        
-        return data
-    
     def create(self, validated_data):
         images = validated_data.pop('images', [])
         
@@ -245,11 +206,10 @@ class ApplicationCreateWithFilesSerializer(serializers.ModelSerializer):
         
         # Rasm fayllarini saqlash
         for image_file in images:
-            if image_file:
-                ApplicationImage.objects.create(
-                    application=application,
-                    image=image_file
-                )
+            ApplicationImage.objects.create(
+                application=application,
+                image=image_file
+            )
         
         return application
 
