@@ -204,7 +204,7 @@ CSRF_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_HTTPONLY = True
 
 # ---------------- Google OAuth ----------------
-GOOGLE_CLIENT_ID = "320127905292-t30glcuensgp3qs0t87mgehe7ohg764r.apps.googleusercontent.com"
+GOOGLE_CLIENT_ID = "554357319562-t3hhms9v4cut0amgavptkkqvnnpdc57o.apps.googleusercontent.com"
 GOOGLE_CLIENT_SECRET = "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"
 
 SOCIALACCOUNT_PROVIDERS = {
