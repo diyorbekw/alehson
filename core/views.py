@@ -1225,3 +1225,57 @@ def filter_applications(request):
 
     serializer = ApplicationSerializer(queryset, many=True)
     return Response(serializer.data)
+
+# ===============================================
+# GET SUBCATEGORIES BY CATEGORY
+# ===============================================
+@extend_schema(
+    methods=['GET'],
+    summary="Kategoriya bo'yicha subkategoriyalarni olish",
+    description="Berilgan kategoriya ID'si bo'yicha unga tegishli subkategoriyalarni olish",
+    parameters=[
+        OpenApiParameter(
+            name='category_id',
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.PATH,
+            description='Kategoriya ID'
+        )
+    ],
+    responses={200: SubcategorySerializer(many=True)}
+)
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def subcategories_by_category(request, category_id):
+    """
+    Berilgan kategoriya ID'si bo'yicha subkategoriyalarni qaytaradi.
+    """
+    try:
+        # Kategoriyani tekshirish
+        category = Category.objects.get(id=category_id)
+        
+        # Kategoriyaga tegishli subkategoriyalarni olish
+        subcategories = category.subcategories.all().order_by('title')
+        
+        # Serializer orqali ma'lumotlarni tayyorlash
+        serializer = SubcategorySerializer(subcategories, many=True)
+        
+        return Response({
+            'category': {
+                'id': category.id,
+                'title': category.title,
+                'description': category.description,
+            },
+            'subcategories': serializer.data,
+            'count': subcategories.count()
+        }, status=200)
+        
+    except Category.DoesNotExist:
+        return Response(
+            {"error": "Berilgan ID bo'yicha kategoriya topilmadi."},
+            status=404
+        )
+    except Exception as e:
+        return Response(
+            {"error": str(e)},
+            status=500
+        )

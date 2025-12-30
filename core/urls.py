@@ -7,7 +7,7 @@ from .views import (
     TokenRefreshView, ProfileAPIView, TestAuthView,
     StatisticsAPIView, ContactUsViewSet,
     applications_by_category, applications_by_subcategory,
-    filter_applications, index, dashboard, get_csrf_token
+    filter_applications, index, dashboard, get_csrf_token, subcategories_by_category
 )
 
 router = DefaultRouter()
@@ -42,7 +42,7 @@ urlpatterns = [
     path('applications/category/<int:category_id>/', applications_by_category, name='applications_by_category'),
     path('applications/subcategory/<int:subcategory_id>/', applications_by_subcategory, name='applications_by_subcategory'),
     path('applications/filter/', filter_applications, name='filter_applications'),
-    
+    path('categories/<int:category_id>/subcategories/', subcategories_by_category, name='subcategories_by_category'),
     # Router urls
     path('', include(router.urls)),
 ]
