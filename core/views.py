@@ -1262,8 +1262,7 @@ def subcategories_by_category(request, category_id):
         return Response({
             'category': {
                 'id': category.id,
-                'title': category.title,
-                'description': category.description,
+                'title': category.title
             },
             'subcategories': serializer.data,
             'count': subcategories.count()
