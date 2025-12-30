@@ -534,6 +534,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         return ApplicationSerializer
 
     def create(self, request, *args, **kwargs):
+        # Foydalanuvchi nomidan slug yaratish
         full_name = request.data.get("full_name")
         if not full_name:
             return Response({"error": "full_name kerak"}, status=400)
@@ -546,24 +547,50 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             new_slug = f"{slug}-{counter}"
             counter += 1
 
-        # images ni alohida olish
+        # Request datani copy qilamiz lekin images ni maxsus ishlaymiz
         data = request.data.copy()
         
-        # images listini olish
-        images = request.FILES.getlist('images')
-        if images:
-            data['images'] = images
+        # images ni alohida o'zgaruvchiga saqlaymiz
+        images_files = request.FILES.getlist('images')
         
-        serializer = self.get_serializer(data=data)
+        # Serializer uchun tayyorlash
+        serializer_data = {
+            'full_name': data.get('full_name'),
+            'phone_number': data.get('phone_number'),
+            'birth_date': data.get('birth_date'),
+            'passport_number': data.get('passport_number'),
+            'region': data.get('region'),
+            'location': data.get('location'),
+            'category': data.get('category'),
+            'subcategory': data.get('subcategory'),
+            'description': data.get('description'),
+            'video': request.FILES.get('video'),
+            'document': request.FILES.get('document'),
+            'slug': new_slug,  # Slug ni qo'shamiz
+        }
+        
+        # Serializer yaratish va validation qilish
+        serializer = self.get_serializer(data=serializer_data)
         serializer.is_valid(raise_exception=True)
         
-        # Slug bilan application yaratish
+        # Application yaratish
         validated_data = serializer.validated_data
-        validated_data['slug'] = new_slug
+        validated_data.pop('slug', None)  # Slug ni olib tashlaymiz, chunki Model yaratishda ishlatamiz
         
-        # ApplicationCreateSerializer create metodini chaqiramiz
-        application = serializer.create(validated_data)
-
+        # Model yaratish
+        application = Application.objects.create(
+            slug=new_slug,
+            **validated_data
+        )
+        
+        # Rasm fayllarini saqlash
+        if images_files:
+            for image_file in images_files:
+                ApplicationImage.objects.create(
+                    application=application,
+                    image=image_file
+                )
+        
         return Response(
             ApplicationSerializer(application).data,
             status=status.HTTP_201_CREATED
