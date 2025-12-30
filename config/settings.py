@@ -15,7 +15,11 @@ ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
     "alehson-site-client.vercel.app",
-    "213.199.50.65"
+    "213.199.50.65",
+    "magenta.uz",
+    "www.magenta.uz",
+    "sifatdev.uz",
+    "www.sifatdev.uz",
 ]
 
 # ---------------- Apps ----------------
