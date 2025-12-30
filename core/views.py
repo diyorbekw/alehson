@@ -547,46 +547,48 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             new_slug = f"{slug}-{counter}"
             counter += 1
 
-        # Request datani to'g'ri formatlash
-        data = {}
-        for field in ['full_name', 'phone_number', 'birth_date', 'passport_number',
-                    'region', 'location', 'category', 'subcategory', 'description']:
-            data[field] = request.data.get(field)
+        # Serializer uchun data
+        data = {
+            'full_name': request.data.get('full_name'),
+            'phone_number': request.data.get('phone_number'),
+            'birth_date': request.data.get('birth_date'),
+            'passport_number': request.data.get('passport_number'),
+            'region': request.data.get('region'),
+            'location': request.data.get('location'),
+            'category': request.data.get('category'),
+            'subcategory': request.data.get('subcategory'),
+            'description': request.data.get('description'),
+            'video': request.FILES.get('video'),
+            'document': request.FILES.get('document'),
+        }
         
-        # Fayllarni qo'shamiz
-        data['video'] = request.FILES.get('video')
-        data['document'] = request.FILES.get('document')
-        
-        # Rasm fayllarini list qilamiz
-        images_files = request.FILES.getlist('images')
-        
-        # Serializer yaratish
         serializer = self.get_serializer(data=data)
         
-        # Validation
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
-        # Slug ni validated_data ga qo'shamiz
-        validated_data = serializer.validated_data
-        
-        # Application yaratish
-        application = Application.objects.create(
-            slug=new_slug,
-            **validated_data
-        )
-        
-        # Rasm fayllarini saqlash
-        for image_file in images_files:
-            ApplicationImage.objects.create(
-                application=application,
-                image=image_file
+        try:
+            # Application yaratish
+            application = serializer.save(slug=new_slug)
+            
+            # Rasm fayllarini saqlash
+            images_files = request.FILES.getlist('images')
+            for image_file in images_files:
+                ApplicationImage.objects.create(
+                    application=application,
+                    image=image_file
+                )
+            
+            return Response(
+                ApplicationSerializer(application).data,
+                status=status.HTTP_201_CREATED
             )
-        
-        return Response(
-            ApplicationSerializer(application).data,
-            status=status.HTTP_201_CREATED
-        )
+            
+        except Exception as e:
+            # Agar xato bo'lsa, yaratilgan applicationni o'chiramiz
+            if 'application' in locals():
+                application.delete()
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
     def perform_update(self, serializer):
         full_name = serializer.validated_data.get("full_name")

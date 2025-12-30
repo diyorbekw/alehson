@@ -173,20 +173,12 @@ class ApplicationCreateWithFilesSerializer(serializers.ModelSerializer):
     video = serializers.FileField(required=False, allow_null=True)
     document = serializers.FileField(required=False, allow_null=True)
     
-    # images maydonini faqat write_only qilamiz
-    images = serializers.ListField(
-        child=serializers.ImageField(),
-        required=False,
-        default=[],
-        write_only=True
-    )
-    
     class Meta:
         model = Application
         fields = [
             'full_name', 'phone_number', 'birth_date', 'passport_number',
             'region', 'location', 'category', 'subcategory', 'description',
-            'video', 'document', 'images'
+            'video', 'document'
         ]
         extra_kwargs = {
             'full_name': {'required': True},
@@ -197,21 +189,6 @@ class ApplicationCreateWithFilesSerializer(serializers.ModelSerializer):
             'category': {'required': True},
             'subcategory': {'required': True}
         }
-    
-    def create(self, validated_data):
-        images = validated_data.pop('images', [])
-        
-        # Application yaratish
-        application = Application.objects.create(**validated_data)
-        
-        # Rasm fayllarini saqlash
-        for image_file in images:
-            ApplicationImage.objects.create(
-                application=application,
-                image=image_file
-            )
-        
-        return application
 
 
 class ApplicationUpdateSerializer(serializers.ModelSerializer):
