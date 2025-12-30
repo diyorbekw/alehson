@@ -1260,12 +1260,7 @@ def subcategories_by_category(request, category_id):
         serializer = SubcategorySerializer(subcategories, many=True)
         
         return Response({
-            'category': {
-                'id': category.id,
-                'title': category.title
-            },
             'subcategories': serializer.data,
-            'count': subcategories.count()
         }, status=200)
         
     except Category.DoesNotExist:
