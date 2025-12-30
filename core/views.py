@@ -453,6 +453,12 @@ class SubcategoryViewSet(viewsets.ModelViewSet):
                 description='Viloyat'
             ),
             OpenApiParameter(
+                name='District',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Tuman'
+            ),
+            OpenApiParameter(
                 name='search',
                 type=OpenApiTypes.STR,
                 location=OpenApiParameter.QUERY,
@@ -493,7 +499,7 @@ class SubcategoryViewSet(viewsets.ModelViewSet):
                 },
                 'required': [
                     'full_name', 'phone_number', 'birth_date',
-                    'passport_number', 'region', 'category', 'subcategory'
+                    'passport_number', 'region', 'district', 'category', 'subcategory'
                 ]
             }
         },
